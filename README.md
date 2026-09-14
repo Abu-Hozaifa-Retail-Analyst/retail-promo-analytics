@@ -109,15 +109,36 @@ Combined with the revenue-lift finding above, most promotions in this
 dataset aren't just costing margin — they often aren't even driving more
 revenue for that specific product.
 
+**Price elasticity** (`src/analysis/elasticity.py`) — estimates price elasticity
+of demand per SKU via log-log regression (`log(units) ~ log(price)`), using
+quantity-weighted average daily price. Requires at least 15 days of sales
+and 4 distinct price points before attempting an estimate.
+
+⚠️ **Finding: elasticity could not be reliably estimated for this dataset.**
+Only 10 of 500 SKUs (2.0%) show a statistically significant price-quantity
+relationship, and even those explain almost none of the variation in demand
+(average R² = 0.027). This is a data limitation, not a modeling error — most
+SKUs only have two effective price points (list price and one discounted
+price), which isn't enough independent price variation to estimate a
+reliable demand curve. **Do not use any single SKU's elasticity estimate
+from this dataset to inform pricing decisions.**
+
+**Returns** (`src/analysis/returns.py`) — computes return rate and nets
+returned profit against gross profit, per category. Return rates are low
+(0.19–0.32%) and returned profit is negligible (under ~110K SAR per
+category) next to the ~20.2M SAR margin-erosion finding — returns are not
+a material factor in this analysis.
+
 ## Status
 
 - [x] Data loader (`src/data/loader.py`)
 - [x] Data cleaning (`src/data/cleaning.py`)
 - [x] Feature engineering (`src/features/build_features.py`)
 - [x] Parallel utility (`src/utils/parallel.py`)
-- [x] Promo lift analysis (`src/analysis/promo_lift.py`) — SKU-level trustworthy, category-level flagged as unreliable
-- [x] Margin erosion analysis (`src/analysis/margin_erosion.py`)
-- [x] Promo ranking (`src/analysis/promo_ranking.py`)
-- [ ] Price elasticity + returns
+- [x] Promo lift analysis — SKU-level trustworthy, category-level flagged unreliable
+- [x] Margin erosion analysis
+- [x] Promo ranking
+- [x] Price elasticity — data limitation documented (not reliably estimable)
+- [x] Returns analysis — confirmed minor factor
 - [ ] Tests
 - [ ] Pipeline orchestration + charts
