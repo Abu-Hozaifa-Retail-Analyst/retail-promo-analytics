@@ -53,6 +53,7 @@ Real POS data has issues. We handle them explicitly rather than silently:
 | Duplicate `transaction_id` | Deduplicated (keep first) |
 | Bad `product_id`/`store_id` FK, zero quantity, non-positive price, date outside calendar | **Kept**, flagged `is_valid=False` with a reason; excluded only from aggregates |
 | Negative quantity | Treated as a **return** (`is_return=True`), not a data error — kept valid, handled separately |
+| `customer_id` present but not in `dim_customer` | **Kept**, flagged `has_valid_customer=False` (separate from `is_valid` — a bad customer link doesn't invalidate revenue/margin math, only customer-level cuts) |
 | Provided `gross_sales`/`net_sales`/`profit_amount`/`gross_margin_pct` | **Recomputed** from base fields as canonical; disagreements flagged `qa_mismatch=True` |
 
 Current QA results on this dataset (120,680 raw rows):
@@ -69,7 +70,7 @@ Current QA results on this dataset (120,680 raw rows):
 
 - [x] Data loader (`src/data/loader.py`)
 - [x] Data cleaning (`src/data/cleaning.py`)
-- [ ] Feature engineering
+- [x] Feature engineering (`src/features/build_features.py`) — defines `is_promo`, `discount_pct`, joins all dimensions
 - [ ] Analysis modules (promo lift, margin erosion, ranking, elasticity)
 - [ ] Tests
 - [ ] Pipeline orchestration + charts
