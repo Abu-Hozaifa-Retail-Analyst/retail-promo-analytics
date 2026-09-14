@@ -24,6 +24,7 @@ class QASummary:
     invalid_zero_quantity: int = 0
     invalid_nonpositive_price: int = 0
     missing_customer_id: int = 0
+    orphan_customer_id: int = 0
     total_invalid_rows: int = 0
     total_valid_rows: int = 0
     return_rows: int = 0
@@ -32,15 +33,14 @@ class QASummary:
 
 def clean_fact_sales(
     sales: pd.DataFrame,
+    customer: pd.DataFrame,
     product: pd.DataFrame,
     store: pd.DataFrame,
     date: pd.DataFrame,
 ) -> tuple[pd.DataFrame, QASummary]:
-    """Deduplicate, validate, and recompute canonical fields for fact_sales."""
-    qa = QASummary()
-    qa.total_rows_raw = len(sales)
-
     df = sales.copy()
+    qa = QASummary()
+    qa.total_rows_raw = len(df)
 
     # --- 1. Deduplicate exact transaction_id repeats (keep first) -----
     dupe_mask = df["transaction_id"].duplicated(keep="first")
@@ -70,7 +70,13 @@ def clean_fact_sales(
     qa.invalid_date_outside_calendar = int(outside_calendar.sum())
     qa.invalid_zero_quantity = int(bad_quantity.sum())
     qa.invalid_nonpositive_price = int(bad_price.sum())
+    valid_customer_ids = set(customer["customer_id"])
+    bad_customer = ~df["customer_id"].isna() & ~df["customer_id"].isin(
+        valid_customer_ids
+    )
     qa.missing_customer_id = int(df["customer_id"].isna().sum())
+    qa.orphan_customer_id = int(bad_customer.sum())
+    df["has_valid_customer"] = ~df["customer_id"].isna() & ~bad_customer
 
     core_invalid = (
         bad_product
