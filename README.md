@@ -78,6 +78,19 @@ during promotions, from +6.4% (Home Appliances) to +14.2% (Home & Living).
 This confirms promotions drive volume — whether that volume is worth its
 cost in margin is answered by the margin erosion analysis (next).
 
+**Margin erosion** (`src/analysis/margin_erosion.py`) — compares average gross
+margin % and net incremental profit during promo vs. non-promo periods, per
+SKU or category. Two views: margin-*rate* erosion (percentage points lost)
+and net profit impact (absolute SAR, counterfactual vs. non-promo baseline).
+
+**Central finding:** every category shows margin erosion of 7.3–8.2 points,
+and every category is net *unprofitable* during promotions
+(`promo_profitable=False`) — the extra volume from Step 6's lift never
+makes up for the margin given away. Total impact: ~20.2M SAR in lost
+profit across all categories (12.2% of total realized profit), against
+~39M SAR in discounts given — roughly half of every discounted SAR
+bought back in extra sales, half was pure margin given away.
+
 ## Status
 
 - [x] Data loader (`src/data/loader.py`)
@@ -85,7 +98,8 @@ cost in margin is answered by the margin erosion analysis (next).
 - [x] Feature engineering (`src/features/build_features.py`)
 - [x] Parallel utility (`src/utils/parallel.py`)
 - [x] Promo lift analysis (`src/analysis/promo_lift.py`)
-- [ ] Margin erosion + promo ranking
+- [x] Margin erosion analysis (`src/analysis/margin_erosion.py`)
+- [ ] Promo ranking (best/worst SKUs)
 - [ ] Price elasticity + returns
 - [ ] Tests
 - [ ] Pipeline orchestration + charts
