@@ -69,19 +69,26 @@ Current QA results on this dataset (120,680 raw rows):
 ## Analyses
 
 **Promo lift** (`src/analysis/promo_lift.py`) — compares average daily units/revenue
-during promo vs. non-promo periods, per SKU or category. Uses per-day averages
-(not raw totals) to avoid bias from unequal promo/non-promo day counts, and
-requires at least 3 days in each regime before trusting the comparison.
+during promo vs. non-promo periods, per SKU or category.
 
-Current result (category level): every category shows positive revenue lift
-during promotions, from +6.4% (Home Appliances) to +14.2% (Home & Living).
-This confirms promotions drive volume — whether that volume is worth its
-cost in margin is answered by the margin erosion analysis (next).
+⚠️ **Known limitation, found during Step 8:** category-level results are
+inflated by an aggregation artifact — since many SKUs share a category,
+almost every calendar day contains a mix of promo and non-promo
+transactions from *different* SKUs, so the "promo total" and "non-promo
+total" aren't comparing the same products. **SKU-level results don't have
+this problem** (a single SKU's day is almost always purely one regime or
+the other) and are the trustworthy numbers — see promo ranking below.
+
+At the SKU level: 88.6% of SKUs (443/500) showed *negative* revenue during
+their promotional periods versus their own non-promotional baseline; only
+11.2% (56/500) showed positive lift. This contradicts the (unreliable)
+category-level average, which showed positive lift for every category.
 
 **Margin erosion** (`src/analysis/margin_erosion.py`) — compares average gross
 margin % and net incremental profit during promo vs. non-promo periods, per
-SKU or category. Two views: margin-*rate* erosion (percentage points lost)
-and net profit impact (absolute SAR, counterfactual vs. non-promo baseline).
+SKU or category. This analysis is unaffected by the category-pooling issue
+above, since it compares each group against its own non-promo baseline
+regardless of granularity.
 
 **Central finding:** every category shows margin erosion of 7.3–8.2 points,
 and every category is net *unprofitable* during promotions
@@ -91,15 +98,26 @@ profit across all categories (12.2% of total realized profit), against
 ~39M SAR in discounts given — roughly half of every discounted SAR
 bought back in extra sales, half was pure margin given away.
 
+**Promo ranking** (`src/analysis/promo_ranking.py`) — merges promo lift and
+margin erosion per SKU, ranked by net incremental profit, to surface the
+best and worst individual performers.
+
+**Finding: 0 of 500 SKUs (0.0%) ran a net-profitable promotion.** Even the
+"best" (least-bad) SKUs lost roughly 2,000–5,000 SAR in incremental profit
+vs. their non-promo baseline; the worst individual SKU lost ~259,000 SAR.
+Combined with the revenue-lift finding above, most promotions in this
+dataset aren't just costing margin — they often aren't even driving more
+revenue for that specific product.
+
 ## Status
 
 - [x] Data loader (`src/data/loader.py`)
 - [x] Data cleaning (`src/data/cleaning.py`)
 - [x] Feature engineering (`src/features/build_features.py`)
 - [x] Parallel utility (`src/utils/parallel.py`)
-- [x] Promo lift analysis (`src/analysis/promo_lift.py`)
+- [x] Promo lift analysis (`src/analysis/promo_lift.py`) — SKU-level trustworthy, category-level flagged as unreliable
 - [x] Margin erosion analysis (`src/analysis/margin_erosion.py`)
-- [ ] Promo ranking (best/worst SKUs)
+- [x] Promo ranking (`src/analysis/promo_ranking.py`)
 - [ ] Price elasticity + returns
 - [ ] Tests
 - [ ] Pipeline orchestration + charts
