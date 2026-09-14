@@ -66,11 +66,26 @@ Current QA results on this dataset (120,680 raw rows):
 | Return rows (kept, analyzed separately) | 296 |
 | Financial field mismatches (source vs. recomputed) | 495–1,087 depending on field |
 
+## Analyses
+
+**Promo lift** (`src/analysis/promo_lift.py`) — compares average daily units/revenue
+during promo vs. non-promo periods, per SKU or category. Uses per-day averages
+(not raw totals) to avoid bias from unequal promo/non-promo day counts, and
+requires at least 3 days in each regime before trusting the comparison.
+
+Current result (category level): every category shows positive revenue lift
+during promotions, from +6.4% (Home Appliances) to +14.2% (Home & Living).
+This confirms promotions drive volume — whether that volume is worth its
+cost in margin is answered by the margin erosion analysis (next).
+
 ## Status
 
 - [x] Data loader (`src/data/loader.py`)
 - [x] Data cleaning (`src/data/cleaning.py`)
-- [x] Feature engineering (`src/features/build_features.py`) — defines `is_promo`, `discount_pct`, joins all dimensions
-- [ ] Analysis modules (promo lift, margin erosion, ranking, elasticity)
+- [x] Feature engineering (`src/features/build_features.py`)
+- [x] Parallel utility (`src/utils/parallel.py`)
+- [x] Promo lift analysis (`src/analysis/promo_lift.py`)
+- [ ] Margin erosion + promo ranking
+- [ ] Price elasticity + returns
 - [ ] Tests
 - [ ] Pipeline orchestration + charts
