@@ -2,6 +2,9 @@
 
 ![CI](https://github.com/Abu-Hozaifa-Retail-Analyst/retail-promo-analytics/actions/workflows/ci.yml/badge.svg)
 
+**Key finding:** promotions in this dataset are not net-profitable — see
+[`STAKEHOLDER_SUMMARY.md`](STAKEHOLDER_SUMMARY.md) for the full write-up.
+
 Analyzes retail transaction data to answer:
 1. Promo lift — do promotions drive more units/revenue per day?
 2. Margin erosion — how much margin do promotions cost?
@@ -216,4 +219,6 @@ generate_all_charts(results, Path("outputs/figures"))
 - [x] Pipeline orchestration
 - [x] Charts
 - [x] CI (GitHub Actions)
-- [ ] Stakeholder summary
+- [x] Stakeholder summary
+
+**Project complete.**
