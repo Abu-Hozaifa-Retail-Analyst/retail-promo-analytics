@@ -1,10 +1,7 @@
-pandas
-numpy
-joblib
-scipy
-pytest
-json
-logging
-pathlib
-matplotlib
-seaborn
+pandas>=2.1
+numpy>=1.26
+joblib>=1.3
+scipy>=1.11
+pytest>=7.4
+matplotlib>=3.8
+seaborn>=0.13
