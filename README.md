@@ -135,16 +135,25 @@ a material factor in this analysis.
 pytest -v
 ```
 
-22 tests across:
-- **Cleaning rules** (`tests/test_cleaning.py`) — one test per data-quality rule (dedup, bad FKs, zero quantity, returns-vs-invalid distinction, canonical field recompute, orphan customer handling), using a small hand-built fixture where each row targets exactly one rule.
-- **Feature engineering** (`tests/test_build_features.py`) — confirms invalid/return rows are excluded by default, `is_promo`/`discount_pct` derivation, and dimension joins.
-- **Parallel utility** (`tests/test_parallel.py`) — grouping, key handling, `None`-result filtering, `min_group_size`.
-- **Promo analysis math** (`tests/test_promo_analysis.py`) — lift %, margin erosion, incremental profit, and best/worst ranking against a hand-verifiable fixture (known % values computed by hand, not just "does it run without error").
+26 tests across:
+- **Cleaning rules** (`tests/test_cleaning.py`) — one test per data-quality rule.
+- **Feature engineering** (`tests/test_build_features.py`) — promo derivation, joins, default exclusions.
+- **Parallel utility** (`tests/test_parallel.py`) — grouping, key handling, filtering.
+- **Promo lift / margin erosion / ranking** (`tests/test_promo_analysis.py`) — hand-verifiable fixture math.
+- **Price elasticity** (`tests/test_elasticity_and_returns.py`) — synthetic data with a *known* elasticity by
+  construction (`Q = 100000 × P^-2`), confirming the regression recovers it, plus guard-condition tests
+  (insufficient days, no price variation).
+- **Returns** (`tests/test_elasticity_and_returns.py`) — return rate calculation against the shared fixture.
 
-**Lesson learned along the way:** pandas/NumPy return their own boolean type
-(`np.bool_`), not Python's built-in `bool` — using `is True`/`is False` in
-assertions fails even when the value is correct, since `is` checks identity,
-not equality. Use `assert x` / `assert not x` instead.
+**Lessons learned along the way:**
+- pandas/NumPy return their own boolean type (`np.bool_`), not Python's built-in `bool` —
+  use `assert x` / `assert not x`, not `is True`/`is False`.
+- `np.isclose()`'s default tolerance is far tighter than typical rounding (e.g. 2 decimal
+  places) — pass an explicit `atol` matching your actual precision, or exact comparisons
+  will fail on values that are correct.
+- When a shared fixture (`conftest.py`) changes, every test relying on it needs re-checking —
+  we had to fix `test_return_rate_computation`'s expected value after adding a new row (T011)
+  to the shared fixture in an earlier step.
 
 ## Status
 
@@ -153,6 +162,7 @@ not equality. Use `assert x` / `assert not x` instead.
 - [x] Feature engineering
 - [x] Parallel utility
 - [x] Promo lift, margin erosion, promo ranking, elasticity, returns analyses
-- [x] Tests (22 passing)
+- [x] Tests (26 passing)
 - [ ] Pipeline orchestration + charts
 - [ ] CI (GitHub Actions)
+- [ ] Stakeholder summary
