@@ -155,6 +155,22 @@ pytest -v
   we had to fix `test_return_rate_computation`'s expected value after adding a new row (T011)
   to the shared fixture in an earlier step.
 
+## Running the full analysis
+
+```powershell
+python -m src.pipeline
+```
+
+Loads all 5 raw tables, cleans and validates fact_sales, builds the joined
+analysis table, and runs all analyses at SKU and/or category level. Writes
+result CSVs plus a QA report (`qa_report.md`, `qa_report.json`) to
+`outputs/reports/`.
+
+**Note:** always run with `python -m src.pipeline`, not `python src/pipeline.py`
+directly — the `-m` flag ensures the project root is on the import path so
+`from src...` imports resolve correctly (same reasoning applies to running
+tests — see Testing section).
+
 ## Status
 
 - [x] Data loader
@@ -162,7 +178,8 @@ pytest -v
 - [x] Feature engineering
 - [x] Parallel utility
 - [x] Promo lift, margin erosion, promo ranking, elasticity, returns analyses
-- [x] Tests (26 passing)
-- [ ] Pipeline orchestration + charts
+- [x] Tests (27 passing)
+- [x] Pipeline orchestration (`src/pipeline.py`)
+- [ ] Charts
 - [ ] CI (GitHub Actions)
 - [ ] Stakeholder summary
