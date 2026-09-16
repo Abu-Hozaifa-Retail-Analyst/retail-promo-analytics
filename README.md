@@ -171,6 +171,32 @@ directly — the `-m` flag ensures the project root is on the import path so
 `from src...` imports resolve correctly (same reasoning applies to running
 tests — see Testing section).
 
+## Charts
+
+Generated via `src/visualization.py`, saved to `outputs/figures/`:
+
+- `margin_erosion_by_category.png` — margin % promo vs non-promo, by category
+- `promo_profitability_scatter.png` — revenue lift vs. net profit impact, one point
+  per SKU. **0 of 500 SKUs are net-profitable** (all points red) — the single most
+  important visual in this project.
+- `elasticity_distribution.png` — includes the "only 2% significant" caveat directly
+  in the chart title, so it can't be misread if separated from the README.
+- `return_rate_by_category.png`
+
+Deliberately **no category-level revenue lift chart** — see the Promo Lift finding
+above regarding the same-day pooling artifact; charting it would visually reinforce
+an unreliable number.
+
+Generate all charts:
+```python
+from pathlib import Path
+from src.pipeline import run_full_pipeline
+from src.visualization import generate_all_charts
+
+results = run_full_pipeline()
+generate_all_charts(results, Path("outputs/figures"))
+```
+
 ## Status
 
 - [x] Data loader
@@ -179,7 +205,7 @@ tests — see Testing section).
 - [x] Parallel utility
 - [x] Promo lift, margin erosion, promo ranking, elasticity, returns analyses
 - [x] Tests (27 passing)
-- [x] Pipeline orchestration (`src/pipeline.py`)
-- [ ] Charts
+- [x] Pipeline orchestration
+- [x] Charts
 - [ ] CI (GitHub Actions)
 - [ ] Stakeholder summary
