@@ -129,16 +129,30 @@ returned profit against gross profit, per category. Return rates are low
 category) next to the ~20.2M SAR margin-erosion finding — returns are not
 a material factor in this analysis.
 
+## Testing
+
+```powershell
+pytest -v
+```
+
+22 tests across:
+- **Cleaning rules** (`tests/test_cleaning.py`) — one test per data-quality rule (dedup, bad FKs, zero quantity, returns-vs-invalid distinction, canonical field recompute, orphan customer handling), using a small hand-built fixture where each row targets exactly one rule.
+- **Feature engineering** (`tests/test_build_features.py`) — confirms invalid/return rows are excluded by default, `is_promo`/`discount_pct` derivation, and dimension joins.
+- **Parallel utility** (`tests/test_parallel.py`) — grouping, key handling, `None`-result filtering, `min_group_size`.
+- **Promo analysis math** (`tests/test_promo_analysis.py`) — lift %, margin erosion, incremental profit, and best/worst ranking against a hand-verifiable fixture (known % values computed by hand, not just "does it run without error").
+
+**Lesson learned along the way:** pandas/NumPy return their own boolean type
+(`np.bool_`), not Python's built-in `bool` — using `is True`/`is False` in
+assertions fails even when the value is correct, since `is` checks identity,
+not equality. Use `assert x` / `assert not x` instead.
+
 ## Status
 
-- [x] Data loader (`src/data/loader.py`)
-- [x] Data cleaning (`src/data/cleaning.py`)
-- [x] Feature engineering (`src/features/build_features.py`)
-- [x] Parallel utility (`src/utils/parallel.py`)
-- [x] Promo lift analysis — SKU-level trustworthy, category-level flagged unreliable
-- [x] Margin erosion analysis
-- [x] Promo ranking
-- [x] Price elasticity — data limitation documented (not reliably estimable)
-- [x] Returns analysis — confirmed minor factor
-- [ ] Tests
+- [x] Data loader
+- [x] Data cleaning
+- [x] Feature engineering
+- [x] Parallel utility
+- [x] Promo lift, margin erosion, promo ranking, elasticity, returns analyses
+- [x] Tests (22 passing)
 - [ ] Pipeline orchestration + charts
+- [ ] CI (GitHub Actions)
