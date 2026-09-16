@@ -3,3 +3,8 @@ numpy
 joblib
 scipy
 pytest
+json
+logging
+pathlib
+matplotlib
+seaborn
