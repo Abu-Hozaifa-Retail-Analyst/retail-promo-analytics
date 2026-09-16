@@ -30,6 +30,26 @@ class QASummary:
     return_rows: int = 0
     financial_field_mismatches: dict[str, int] = field(default_factory=dict)
 
+    def as_dict(self) -> dict:
+        """Convert to a plain dict, e.g. for JSON serialization."""
+        return {
+            "total_rows_raw": self.total_rows_raw,
+            "duplicate_rows_removed": self.duplicate_rows_removed,
+            "total_rows_after_dedup": self.total_rows_after_dedup,
+            "invalid_bad_product_fk": self.invalid_bad_product_fk,
+            "invalid_bad_store_fk": self.invalid_bad_store_fk,
+            "invalid_missing_date": self.invalid_missing_date,
+            "invalid_date_outside_calendar": self.invalid_date_outside_calendar,
+            "invalid_zero_quantity": self.invalid_zero_quantity,
+            "invalid_nonpositive_price": self.invalid_nonpositive_price,
+            "missing_customer_id": self.missing_customer_id,
+            "orphan_customer_id": self.orphan_customer_id,
+            "total_invalid_rows": self.total_invalid_rows,
+            "total_valid_rows": self.total_valid_rows,
+            "return_rows": self.return_rows,
+            "financial_field_mismatches": self.financial_field_mismatches,
+        }
+
 
 def clean_fact_sales(
     sales: pd.DataFrame,

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import numpy as np
-
 from src.data.cleaning import clean_fact_sales
 
 
@@ -137,3 +135,15 @@ def test_no_rows_are_dropped_only_flagged(
     # 11 raw rows, 1 exact duplicate removed -> 10 remain, ALL kept (flagged, not dropped)
     assert qa.total_rows_raw == 11
     assert len(cleaned) == 10
+
+
+def test_qa_summary_as_dict(
+    raw_fact_sales, dim_customer, dim_product, dim_store, dim_date
+):
+    cleaned, qa = clean_fact_sales(
+        raw_fact_sales, dim_customer, dim_product, dim_store, dim_date
+    )
+    d = qa.as_dict()
+    assert d["total_rows_raw"] == 11
+    assert d["duplicate_rows_removed"] == 1
+    assert isinstance(d["financial_field_mismatches"], dict)
