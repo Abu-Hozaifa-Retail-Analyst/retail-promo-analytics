@@ -1,5 +1,7 @@
 # Retail Promotion & Profitability Analytics
 
+![CI](https://github.com/Abu-Hozaifa-Retail-Analyst/retail-promo-analytics/actions/workflows/ci.yml/badge.svg)
+
 Analyzes retail transaction data to answer:
 1. Promo lift — do promotions drive more units/revenue per day?
 2. Margin erosion — how much margin do promotions cost?
@@ -155,6 +157,12 @@ pytest -v
   we had to fix `test_return_rate_computation`'s expected value after adding a new row (T011)
   to the shared fixture in an earlier step.
 
+## Continuous integration
+
+Every push to `main` automatically runs the full test suite via GitHub
+Actions (`.github/workflows/ci.yml`). See the badge at the top of this
+README, or the "Actions" tab on GitHub, for current status.
+
 ## Running the full analysis
 
 ```powershell
@@ -207,5 +215,5 @@ generate_all_charts(results, Path("outputs/figures"))
 - [x] Tests (27 passing)
 - [x] Pipeline orchestration
 - [x] Charts
-- [ ] CI (GitHub Actions)
+- [x] CI (GitHub Actions)
 - [ ] Stakeholder summary
