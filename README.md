@@ -1,43 +1,108 @@
 # Retail Promotion & Profitability Analytics
 
-![CI](https://github.com/Abu-Hozaifa-Retail-Analyst/retail-promo-analytics/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/Abu-Hozaifa-Retail-Analyst/retail-promo-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/Abu-Hozaifa-Retail-Analyst/retail-promo-analytics/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-**Key finding:** promotions in this dataset are not net-profitable — see
-[`STAKEHOLDER_SUMMARY.md`](STAKEHOLDER_SUMMARY.md) for the full write-up.
+> **Key finding.** In this dataset, discounts do not measurably change how much customers buy:
+> pooled price elasticity is **−0.003 (95% CI −0.049 to +0.042)**. Every discount is therefore
+> margin given away unless it brings in extra transactions, which this data cannot observe.
+> Discounts total **39.0M SAR, equal to 23.5% of realized profit**.
+>
+> ⚠️ `STAKEHOLDER_SUMMARY.md` predates a methodology review and is being rewritten. Its headline
+> figures (20.2M SAR lost, "0 of 500 SKUs profitable") are **superseded**; see
+> [Legacy analyses and known limitations](#legacy-analyses-and-known-limitations).
 
-Analyzes retail transaction data to answer:
-1. Promo lift — do promotions drive more units/revenue per day?
-2. Margin erosion — how much margin do promotions cost?
-3. Promo ranking — which SKUs run profitable promotions vs. losing ones?
-4. Price elasticity — how price-sensitive is demand, per SKU?
+## Questions this project answers
+
+1. **Can this dataset support a promotion-effect analysis at all?** (data diagnostics)
+2. **Do discounts change what customers buy?** (demand response and price elasticity)
+3. **What do discounts cost?** (margin given away)
+4. **Which discount depths could ever pay for themselves?** (break-even analysis, in progress)
+
+## Findings so far
+
+| Question | Result | Code |
+|---|---|---|
+| Is there a promo calendar? | **No.** 54.8% of transactions carry a discount, flat across category, region, store type, weekday and month (spread ≤ 1.5 pts). P(promo \| previous transaction was promo) = 0.545 vs 0.552 otherwise, so discounting behaves like an independent per-transaction coin flip, not planned events. | `diagnostics.py` |
+| Is the SKU × day panel dense? | **No.** 72.2% of SKU-days have zero sales; days with sales average 1.17 transactions. | `diagnostics.py` |
+| Does quantity per transaction rise with a discount? | **No.** 3.003 units on promo vs 3.008 off promo: lift −0.15%, 95% CI [−0.69%, +0.39%]. | `diagnostics.py` |
+| What is the price elasticity? | **−0.003, 95% CI [−0.049, +0.042]**, from 118,664 transactions and 500 SKUs. Unchanged with week effects (−0.004) or store effects (−0.003). All 7 categories have intervals that include 0 and exclude −1. | `pooled_elasticity.py` |
+| What do discounts cost? | **39.0M SAR given**, 23.5% of 166.0M SAR profit. | `margin_erosion.py` output (`total_discount_given`) |
+| Do returns matter? | No. Return rates are 0.19–0.32% by category. | `returns.py` |
+
+### What this data cannot tell us
+
+- **Traffic effects.** Quantity per transaction does not respond to discounts, but a discount could still
+  bring in *more transactions*. Transactions only exist when a sale happened, and discounts are assigned
+  per transaction rather than per period, so the extra transactions a discount might create cannot be
+  observed here.
+- **Anything about planned promotions.** There is no promo calendar in the data (see the first row above).
+
+**What would fix it:** a promotion calendar from the planning system (SKU, store, start and end date,
+mechanic), joined to the sales data, so promo periods can be compared with comparable non-promo periods.
+
+## How the analysis works
+
+```
+raw CSVs ──► loader ──► cleaning (flag, don't drop) ──► analysis table ──► diagnostics
+                                                                      └──► pooled elasticity
+```
+
+1. **Load** the five star-schema tables (`src/data/loader.py`).
+2. **Clean** `fact_sales`: deduplicate, flag invalid rows, separate returns, recompute financial fields
+   (`src/data/cleaning.py`).
+3. **Build the analysis table**: join dimensions and derive `is_promo` and `discount_pct`
+   (`src/features/build_features.py`).
+4. **Diagnose** whether the data can support a promotion-effect analysis
+   (`src/analysis/diagnostics.py`).
+5. **Estimate** one price elasticity with SKU fixed effects and SKU-clustered standard errors
+   (`src/analysis/pooled_elasticity.py`).
 
 ## Project structure
 
-\`\`\`
+```
 retail-promo-analytics/
+├── .github/workflows/ci.yml        # run tests on every push to main and on pull requests
 ├── src/
 │   ├── data/
-│   │   ├── loader.py       # read raw CSVs from data/raw/
-│   │   └── cleaning.py     # dedup, validity flags, canonical recompute
-│   ├── features/           # (next: joins + is_promo derivation)
-│   ├── analysis/           # (next: lift, erosion, ranking, elasticity)
-│   └── utils/               # (next: parallel processing helper)
-├── tests/
-├── data/raw/                # your 5 source CSVs go here (gitignored)
-└── outputs/                 # generated results (gitignored)
-\`\`\`
+│   │   ├── loader.py               # read raw CSVs from data/raw/
+│   │   └── cleaning.py             # dedup, validity flags, canonical recompute, QA summary
+│   ├── features/
+│   │   └── build_features.py       # joins, is_promo, discount_pct, depth buckets
+│   ├── analysis/
+│   │   ├── diagnostics.py          # can the data support a promo analysis?
+│   │   ├── pooled_elasticity.py    # fixed-effects elasticity, clustered standard errors
+│   │   ├── returns.py              # return rate and net profit impact
+│   │   ├── promo_lift.py           # legacy (see known limitations)
+│   │   ├── margin_erosion.py       # legacy
+│   │   ├── promo_ranking.py        # legacy
+│   │   └── elasticity.py           # legacy per-SKU regressions
+│   ├── utils/parallel.py           # joblib wrapper for independent per-group work
+│   ├── visualization.py            # matplotlib / seaborn charts
+│   └── pipeline.py                 # load -> clean -> legacy analyses -> save
+├── tests/                          # 36 pytest tests
+├── data/raw/                       # your 5 source CSVs go here (gitignored)
+├── outputs/                        # generated tables and charts (gitignored)
+├── pytest.ini
+├── requirements.txt
+├── STAKEHOLDER_SUMMARY.md          # being rewritten
+└── LICENSE
+```
 
 ## Setup
 
-\`\`\`powershell
+Python 3.11 or newer (CI runs 3.11; developed on 3.13).
+
+```powershell
 python -m venv .venv
-.venv\Scripts\Activate.ps1
+.venv\Scripts\Activate.ps1          # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-\`\`\`
+```
 
 ## Data expectations
 
-Place these five CSVs in `data/raw/` (star schema):
+Place these five CSVs in `data/raw/` (star schema, not included in the repo):
 
 | File | Grain | Key columns |
 |---|---|---|
@@ -47,92 +112,95 @@ Place these five CSVs in `data/raw/` (star schema):
 | `dim_store.csv` | 1 row / store | `store_id`, `region`, `store_type` |
 | `fact_sales.csv` | 1 row / transaction line | `transaction_id`, `transaction_date`, `customer_id`, `product_id`, `store_id`, `quantity`, `unit_price`, `discount_amount`, `unit_cost` |
 
-There's no explicit `promo_flag` — a transaction counts as **promoted** if `discount_amount > 0` (defined in `src/features`, coming next).
+There is no explicit promo flag. A transaction counts as **promoted** if `discount_amount > 0`
+(defined in `src/features/build_features.py`). The diagnostics above show that, in this dataset,
+that is a per-transaction attribute rather than a promotion event.
 
 ## Data quality handling
 
-Real POS data has issues. We handle them explicitly rather than silently:
+Real POS data has issues. They are handled explicitly rather than silently:
 
 | Issue | Handling |
 |---|---|
 | Duplicate `transaction_id` | Deduplicated (keep first) |
-| Bad `product_id`/`store_id` FK, zero quantity, non-positive price, date outside calendar | **Kept**, flagged `is_valid=False` with a reason; excluded only from aggregates |
-| Negative quantity | Treated as a **return** (`is_return=True`), not a data error — kept valid, handled separately |
-| `customer_id` present but not in `dim_customer` | **Kept**, flagged `has_valid_customer=False` (separate from `is_valid` — a bad customer link doesn't invalidate revenue/margin math, only customer-level cuts) |
-| Provided `gross_sales`/`net_sales`/`profit_amount`/`gross_margin_pct` | **Recomputed** from base fields as canonical; disagreements flagged `qa_mismatch=True` |
+| Bad `product_id` / `store_id` foreign key, zero quantity, non-positive price, date outside calendar | **Kept**, flagged `is_valid=False` with a reason in `invalid_reasons`; excluded only from aggregates |
+| Negative quantity | Treated as a **return** (`is_return=True`), not a data error: kept valid, analyzed separately |
+| `customer_id` present but not in `dim_customer` | **Kept**, flagged `has_valid_customer=False` (separate from `is_valid`, since a bad customer link does not affect revenue or margin math, only customer-level cuts) |
+| Provided `gross_sales`, `net_sales`, `profit_amount`, `gross_margin_pct` | **Recomputed** from base fields; disagreements flagged `qa_mismatch=True` |
 
-Current QA results on this dataset (120,680 raw rows):
+Results on this dataset:
 
 | Metric | Value |
 |---|---|
+| Raw rows | 120,680 |
 | Duplicate rows removed | 680 |
 | Invalid rows (excluded from aggregates) | 847 |
 | Valid rows | 119,153 |
 | Return rows (kept, analyzed separately) | 296 |
-| Financial field mismatches (source vs. recomputed) | 495–1,087 depending on field |
+| Valid non-return transactions in the analysis table | 118,858 |
+| Financial field mismatches (source vs recomputed) | 495 to 1,087 depending on field |
 
-## Analyses
+The pipeline writes the full report to `outputs/reports/qa_report.md`.
 
-**Promo lift** (`src/analysis/promo_lift.py`) — compares average daily units/revenue
-during promo vs. non-promo periods, per SKU or category.
+## Running the analysis
 
-⚠️ **Known limitation, found during Step 8:** category-level results are
-inflated by an aggregation artifact — since many SKUs share a category,
-almost every calendar day contains a mix of promo and non-promo
-transactions from *different* SKUs, so the "promo total" and "non-promo
-total" aren't comparing the same products. **SKU-level results don't have
-this problem** (a single SKU's day is almost always purely one regime or
-the other) and are the trustworthy numbers — see promo ranking below.
+Run the pipeline (loads, cleans, runs the legacy analyses, writes tables and a QA report to
+`outputs/reports/`):
 
-At the SKU level: 88.6% of SKUs (443/500) showed *negative* revenue during
-their promotional periods versus their own non-promotional baseline; only
-11.2% (56/500) showed positive lift. This contradicts the (unreliable)
-category-level average, which showed positive lift for every category.
+```powershell
+python -m src.pipeline
+```
 
-**Margin erosion** (`src/analysis/margin_erosion.py`) — compares average gross
-margin % and net incremental profit during promo vs. non-promo periods, per
-SKU or category. This analysis is unaffected by the category-pooling issue
-above, since it compares each group against its own non-promo baseline
-regardless of granularity.
+Always use `python -m src.pipeline`, not `python src/pipeline.py`. The `-m` flag puts the project root
+on the import path so `from src...` imports resolve.
 
-**Central finding:** every category shows margin erosion of 7.3–8.2 points,
-and every category is net *unprofitable* during promotions
-(`promo_profitable=False`) — the extra volume from Step 6's lift never
-makes up for the margin given away. Total impact: ~20.2M SAR in lost
-profit across all categories (12.2% of total realized profit), against
-~39M SAR in discounts given — roughly half of every discounted SAR
-bought back in extra sales, half was pure margin given away.
+Run the diagnostics and the pooled elasticity (not yet wired into the pipeline):
 
-**Promo ranking** (`src/analysis/promo_ranking.py`) — merges promo lift and
-margin erosion per SKU, ranked by net incremental profit, to surface the
-best and worst individual performers.
+```python
+from src.data.loader import load_all
+from src.data.cleaning import clean_fact_sales
+from src.features.build_features import build_sales_analysis_table
+from src.analysis.diagnostics import run_promo_diagnostics
+from src.analysis.pooled_elasticity import estimate_pooled_elasticity, pooled_elasticity_by_group
 
-**Finding: 0 of 500 SKUs (0.0%) ran a net-profitable promotion.** Even the
-"best" (least-bad) SKUs lost roughly 2,000–5,000 SAR in incremental profit
-vs. their non-promo baseline; the worst individual SKU lost ~259,000 SAR.
-Combined with the revenue-lift finding above, most promotions in this
-dataset aren't just costing margin — they often aren't even driving more
-revenue for that specific product.
+tables = load_all()
+cleaned, qa = clean_fact_sales(
+    tables["sales"], tables["customer"], tables["product"], tables["store"], tables["date"]
+)
+analysis = build_sales_analysis_table(cleaned, tables["customer"], tables["store"], tables["date"])
+analysis["year_week"] = analysis["year"].astype(str) + "-" + analysis["week"].astype(str)
 
-**Price elasticity** (`src/analysis/elasticity.py`) — estimates price elasticity
-of demand per SKU via log-log regression (`log(units) ~ log(price)`), using
-quantity-weighted average daily price. Requires at least 15 days of sales
-and 4 distinct price points before attempting an estimate.
+diagnostics = run_promo_diagnostics(analysis)
+overall = estimate_pooled_elasticity(analysis)
+with_seasonality = estimate_pooled_elasticity(analysis, fixed_effects=("product_id", "year_week"))
+by_category = pooled_elasticity_by_group(analysis, "category")
+```
 
-⚠️ **Finding: elasticity could not be reliably estimated for this dataset.**
-Only 10 of 500 SKUs (2.0%) show a statistically significant price-quantity
-relationship, and even those explain almost none of the variation in demand
-(average R² = 0.027). This is a data limitation, not a modeling error — most
-SKUs only have two effective price points (list price and one discounted
-price), which isn't enough independent price variation to estimate a
-reliable demand curve. **Do not use any single SKU's elasticity estimate
-from this dataset to inform pricing decisions.**
+### Charts
 
-**Returns** (`src/analysis/returns.py`) — computes return rate and nets
-returned profit against gross profit, per category. Return rates are low
-(0.19–0.32%) and returned profit is negligible (under ~110K SAR per
-category) next to the ~20.2M SAR margin-erosion finding — returns are not
-a material factor in this analysis.
+`src/visualization.py` generates PNGs into `outputs/figures/`. The current chart set is built from the
+legacy analyses, so treat `promo_profitability_scatter.png` as superseded until the charts are rebuilt
+(see the roadmap).
+
+## Legacy analyses and known limitations
+
+`promo_lift.py`, `margin_erosion.py`, `promo_ranking.py` and `elasticity.py` compare "promo days" with
+"non-promo days" per SKU or category. A methodology review found problems that make their headline
+numbers unreliable. They remain in the repo, and the pipeline still runs them, until the replacements
+land.
+
+| Limitation | Why it matters |
+|---|---|
+| The daily grouping only creates rows for days that had a sale | 72% of SKU-days are ignored, and "units per day" is effectively quantity per transaction |
+| Promo status is set per transaction | One calendar day can fall into both regimes, and there are no real promo periods to compare |
+| Category-level lift compares buckets of unequal size (about 55% vs 45% of transactions) | It showed positive lift for every category and contradicted the SKU level; treat it as an artifact |
+| SKU-level "negative revenue lift" mostly reflects the discount itself | Revenue per transaction is 10.3% lower on promos against an average depth of 9.5%, because quantity does not respond |
+| Incremental-profit totals depend on the grouping | The same code gives 20.2M SAR at category level and 37.8M SAR at SKU level, so neither is a reliable headline |
+| Per-SKU elasticity regressions use about 240 transactions each | Estimates are noise around zero (only 2% significant); replaced by the pooled estimate |
+
+The earlier headline "0 of 500 SKUs ran a profitable promotion" follows mechanically from the fifth row:
+with no quantity response, profit per transaction must fall by the discount. It describes the data, not
+a finding about promotion strategy.
 
 ## Testing
 
@@ -140,85 +208,58 @@ a material factor in this analysis.
 pytest -v
 ```
 
-26 tests across:
-- **Cleaning rules** (`tests/test_cleaning.py`) — one test per data-quality rule.
-- **Feature engineering** (`tests/test_build_features.py`) — promo derivation, joins, default exclusions.
-- **Parallel utility** (`tests/test_parallel.py`) — grouping, key handling, filtering.
-- **Promo lift / margin erosion / ranking** (`tests/test_promo_analysis.py`) — hand-verifiable fixture math.
-- **Price elasticity** (`tests/test_elasticity_and_returns.py`) — synthetic data with a *known* elasticity by
-  construction (`Q = 100000 × P^-2`), confirming the regression recovers it, plus guard-condition tests
-  (insufficient days, no price variation).
-- **Returns** (`tests/test_elasticity_and_returns.py`) — return rate calculation against the shared fixture.
+36 tests:
 
-**Lessons learned along the way:**
-- pandas/NumPy return their own boolean type (`np.bool_`), not Python's built-in `bool` —
-  use `assert x` / `assert not x`, not `is True`/`is False`.
-- `np.isclose()`'s default tolerance is far tighter than typical rounding (e.g. 2 decimal
-  places) — pass an explicit `atol` matching your actual precision, or exact comparisons
-  will fail on values that are correct.
-- When a shared fixture (`conftest.py`) changes, every test relying on it needs re-checking —
-  we had to fix `test_return_rate_computation`'s expected value after adding a new row (T011)
-  to the shared fixture in an earlier step.
+| File | Tests | Covers |
+|---|---|---|
+| `test_cleaning.py` | 12 | One test per data-quality rule, QA summary |
+| `test_build_features.py` | 4 | Promo derivation, joins, default exclusions |
+| `test_parallel.py` | 4 | Grouping, key handling, filtering |
+| `test_promo_analysis.py` | 3 | Legacy lift, erosion and ranking math against hand-checked fixtures |
+| `test_elasticity_and_returns.py` | 4 | Legacy elasticity (known slope recovered), guard conditions, return rate |
+| `test_diagnostics.py` | 5 | Sparsity, assignment profile, persistence, demand response |
+| `test_pooled_elasticity.py` | 4 | Known elasticity recovered, zero response, and week effects removing seasonal confounding |
+
+The pooled elasticity tests use data generated from a **known** elasticity. One test builds busy weeks
+that have both more discounting and more demand: the naive estimate is −3.6 against a true −1.0, and
+adding week effects recovers −0.98.
 
 ## Continuous integration
 
-Every push to `main` automatically runs the full test suite via GitHub
-Actions (`.github/workflows/ci.yml`). See the badge at the top of this
-README, or the "Actions" tab on GitHub, for current status.
+GitHub Actions (`.github/workflows/ci.yml`) runs the full test suite on every push to `main` and on every
+pull request targeting `main`, on Python 3.11.
 
-## Running the full analysis
+## Lessons learned
 
-```powershell
-python -m src.pipeline
-```
+- pandas and NumPy return their own boolean type (`np.bool_`), so `is True` fails on correct values. Use
+  `assert x` or `assert not x`.
+- `np.isclose` defaults are far tighter than typical rounding; pass an explicit `atol`.
+- When a shared fixture in `conftest.py` changes, every test that uses it needs re-checking.
+- Only third-party packages belong in `requirements.txt`. `json`, `logging` and `pathlib` ship with Python.
+- Aggregation can hide the truth: always check how much of the panel is empty and how many events each
+  group contains before trusting a daily average.
+- Seasonality inflates promo effects: when busy weeks have both more discounts and more demand, a naive
+  elasticity looks far too large. Fixed effects fix it.
+- Cluster-robust standard errors are only well calibrated with enough clusters (about 100 here vs 20).
 
-Loads all 5 raw tables, cleans and validates fact_sales, builds the joined
-analysis table, and runs all analyses at SKU and/or category level. Writes
-result CSVs plus a QA report (`qa_report.md`, `qa_report.json`) to
-`outputs/reports/`.
+## Roadmap
 
-**Note:** always run with `python -m src.pipeline`, not `python src/pipeline.py`
-directly — the `-m` flag ensures the project root is on the import path so
-`from src...` imports resolve correctly (same reasoning applies to running
-tests — see Testing section).
+- [x] Loader, cleaning, feature engineering, parallel utility
+- [x] Legacy lift, erosion, ranking, elasticity and returns analyses
+- [x] Tests and CI
+- [x] Data diagnostics
+- [x] Pooled fixed-effects elasticity
+- [ ] Break-even and below-cost guardrail module (the volume lift each discount depth needs to hold profit
+      flat; an initial audit found 2,240 promo transactions priced below cost)
+- [ ] Complete SKU × week panel with zero-sales periods filled in, for traffic-based analysis
+- [ ] Discount-cap scenario simulation with sensitivity to the assumed elasticity
+- [ ] Wire diagnostics and pooled elasticity into the pipeline and rebuild the charts
+- [ ] Input schema validation
+- [ ] Engineering polish: `pyproject.toml`, ruff, mypy, coverage, Python version matrix
+- [ ] Rewrite `STAKEHOLDER_SUMMARY.md` around the corrected findings
+- [ ] Notebook walkthrough
+- [ ] Repository description and topics, `v1.0` release
 
-## Charts
+## License
 
-Generated via `src/visualization.py`, saved to `outputs/figures/`:
-
-- `margin_erosion_by_category.png` — margin % promo vs non-promo, by category
-- `promo_profitability_scatter.png` — revenue lift vs. net profit impact, one point
-  per SKU. **0 of 500 SKUs are net-profitable** (all points red) — the single most
-  important visual in this project.
-- `elasticity_distribution.png` — includes the "only 2% significant" caveat directly
-  in the chart title, so it can't be misread if separated from the README.
-- `return_rate_by_category.png`
-
-Deliberately **no category-level revenue lift chart** — see the Promo Lift finding
-above regarding the same-day pooling artifact; charting it would visually reinforce
-an unreliable number.
-
-Generate all charts:
-```python
-from pathlib import Path
-from src.pipeline import run_full_pipeline
-from src.visualization import generate_all_charts
-
-results = run_full_pipeline()
-generate_all_charts(results, Path("outputs/figures"))
-```
-
-## Status
-
-- [x] Data loader
-- [x] Data cleaning
-- [x] Feature engineering
-- [x] Parallel utility
-- [x] Promo lift, margin erosion, promo ranking, elasticity, returns analyses
-- [x] Tests (27 passing)
-- [x] Pipeline orchestration
-- [x] Charts
-- [x] CI (GitHub Actions)
-- [x] Stakeholder summary
-
-**Project complete.**
+MIT. See [LICENSE](LICENSE).
