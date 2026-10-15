@@ -7,8 +7,9 @@
 > **Key finding.** In this dataset, discounts do not measurably change how much customers buy:
 > pooled price elasticity is **−0.003 (95% CI −0.049 to +0.042)**. To pay for themselves, a 5% discount
 > would need about **+22% more volume**, a 10% discount **+58%**, a 15% discount **+121%** and a 20%
-> discount **+269%**. Discounts total **37.3M SAR, equal to 22.3% of realized profit**. Whether they bring
-> in extra transactions cannot be observed in this data.
+> discount **+269%**. Discounts total **37.3M SAR, equal to 22.3% of realized profit**. Capping discounts
+> at 10% would add about **5.9M SAR (+3.5%)** if volume does not react, and still pays unless demand is more
+> price-sensitive than **−6.4**. Whether discounts bring in extra transactions cannot be observed in this data.
 >
 > ⚠️ `STAKEHOLDER_SUMMARY.md` predates a methodology review and is being rewritten. Its headline
 > figures (20.2M SAR lost, "0 of 500 SKUs profitable") are **superseded**; see
@@ -20,6 +21,7 @@
 2. **Do discounts change what customers buy?** (demand response and price elasticity)
 3. **What do discounts cost?** (margin given away)
 4. **How much extra volume would each discount depth need to pay for itself?** (break-even analysis)
+5. **What would a discount cap do to profit?** (scenario simulation)
 
 ## Findings
 
@@ -32,6 +34,7 @@
 | What do discounts cost? | **37.3M SAR given**, 22.3% of 167.3M SAR profit. | `breakeven.py` |
 | Could removing discounts pay off? | If every discount were removed, up to **33.5% of the promoted volume** could be lost before profit fell below today's level (illustrative: assumes the customers who leave are average). | `breakeven.py` |
 | Are any sales below cost? | 2,046 promo transactions (3.2% of promo sales) were sold at or below cost. The money involved is small (0.34M SAR, 0.2% of profit), so this is a pricing-guardrail issue; most of the cost of discounting is the margin given away on ordinary discounts. | `breakeven.py` |
+| What would capping discounts do? | A 10% cap adds **+5.9M SAR (+3.5%)** with no volume response, +4.7M at elasticity −1 and +2.7M at −3. Capping pays unless demand is more elastic than −6.4 (10% cap), −4.4 (no discounts), −5.2 (5% cap) or −8.5 (15% cap). See the scenario table below. | `scenarios.py` |
 | Do returns matter? | No. Return rates are 0.19–0.32% by category. | `returns.py` |
 
 ### Break-even by discount depth
@@ -50,6 +53,29 @@ list price instead of *m*, so volume must rise by *d / (m − d)* just to keep p
 The observed column measures quantity per transaction. Any gap between it and the needed lift would have to
 come from **extra transactions**, which this dataset cannot show.
 
+### Discount-cap scenarios
+
+A cap of *c* leaves every sale discounted at or below *c* untouched. A sale discounted deeper than *c* is
+re-priced to *c*, and its volume reacts as `((1 − c) / (1 − d)) ^ elasticity`. Because the estimated elasticity
+only covers basket size (not customers who stop coming), results are shown across a range of elasticities.
+
+Profit change versus today (current profit 167.3M SAR):
+
+| Cap | Sales re-priced | No response (ε = 0) | ε = −0.5 | ε = −1 | ε = −2 | ε = −3 | Break-even ε |
+|---|---|---|---|---|---|---|---|
+| 0% (no discounts) | 64,928 (100%) | +37.3M (+22.3%) | +32.1M | +27.1M | +18.1M | +10.0M | −4.4 |
+| 5% | 35,390 (54.5%) | +16.9M (+10.1%) | +14.9M | +13.0M | +9.3M | +6.1M | −5.2 |
+| 10% | 14,142 (21.8%) | +5.9M (+3.5%) | +5.3M | +4.7M | +3.7M | +2.7M | −6.4 |
+| 15% | 4,772 (7.3%) | +1.5M (+0.9%) | +1.4M | +1.3M | +1.1M | +0.9M | −8.5 |
+
+The break-even elasticity is the demand response at which a cap stops paying: capping adds profit unless
+demand is *more* price-sensitive than this. All four values are far beyond the elasticity this data shows
+(−0.003, with a 95% interval of −0.049 to +0.042).
+
+**Read with care.** This is a model, not a forecast. It assumes one constant elasticity for every re-priced
+sale and ignores effects on other products (traffic that buys full-price items), customer loyalty over time,
+and competitor reactions. Removing all discounts is the extreme case; a partial cap is the safer first test.
+
 ### What this data cannot tell us
 
 - **Traffic effects.** Quantity per transaction does not respond to discounts, but a discount could still
@@ -66,7 +92,8 @@ mechanic), joined to the sales data, so promo periods can be compared with compa
 ```
 raw CSVs ──► loader ──► cleaning (flag, don't drop) ──► analysis table ──┬──► diagnostics
                                                                          ├──► pooled elasticity
-                                                                         └──► break-even
+                                                                         ├──► break-even
+                                                                         └──► discount-cap scenarios
 ```
 
 1. **Load** the five star-schema tables (`src/data/loader.py`).
@@ -80,6 +107,8 @@ raw CSVs ──► loader ──► cleaning (flag, don't drop) ──► analys
    (`src/analysis/pooled_elasticity.py`).
 6. **Break even**: compare the volume lift each discount depth needs with the lift observed
    (`src/analysis/breakeven.py`).
+7. **Simulate** discount caps across a range of elasticities and solve for the break-even elasticity
+   (`src/analysis/scenarios.py`).
 
 ## Project structure
 
@@ -96,6 +125,7 @@ retail-promo-analytics/
 │   │   ├── diagnostics.py          # can the data support a promo analysis?
 │   │   ├── pooled_elasticity.py    # fixed-effects elasticity, clustered standard errors
 │   │   ├── breakeven.py            # required vs observed volume lift, discount cost summary
+│   │   ├── scenarios.py            # discount-cap simulation, break-even elasticity
 │   │   ├── returns.py              # return rate and net profit impact
 │   │   ├── promo_lift.py           # legacy (see known limitations)
 │   │   ├── margin_erosion.py       # legacy
@@ -104,7 +134,7 @@ retail-promo-analytics/
 │   ├── utils/parallel.py           # joblib wrapper for independent per-group work
 │   ├── visualization.py            # matplotlib / seaborn charts
 │   └── pipeline.py                 # load -> clean -> legacy analyses -> save
-├── tests/                          # 43 pytest tests
+├── tests/                          # 51 pytest tests
 ├── data/raw/                       # your 5 source CSVs go here (gitignored)
 ├── outputs/                        # generated tables and charts (gitignored)
 ├── pytest.ini
@@ -190,6 +220,7 @@ from src.analysis.pooled_elasticity import (
     pooled_elasticity_by_group,
 )
 from src.analysis.breakeven import breakeven_table, discount_cost_summary
+from src.analysis.scenarios import scenario_grid, breakeven_elasticity
 
 tables = load_all()
 cleaned, qa = clean_fact_sales(
@@ -214,6 +245,8 @@ with_seasonality = estimate_pooled_elasticity(
 by_category = pooled_elasticity_by_group(analysis, "category")
 breakeven = breakeven_table(analysis)  # add ["category"] to split by category
 cost = discount_cost_summary(analysis)
+scenarios = scenario_grid(analysis)  # caps x elasticities
+cap_10_breakeven = breakeven_elasticity(analysis, cap=0.10)
 ```
 
 ### Charts
@@ -248,7 +281,7 @@ a finding about promotion strategy.
 pytest -v
 ```
 
-43 tests:
+51 tests:
 
 | File | Tests | Covers |
 |---|---|---|
@@ -260,6 +293,7 @@ pytest -v
 | `test_diagnostics.py` | 5 | Sparsity, assignment profile, persistence, demand response |
 | `test_pooled_elasticity.py` | 4 | Known elasticity recovered, zero response, and week effects removing seasonal confounding |
 | `test_breakeven.py` | 6 | Depth snapping, textbook break-even formula, below-cost, extra traffic needed, per-group margins, cost summary |
+| `test_scenarios.py` | 8 | Exact gain with no response, untouched sales, volume reaction, unit elasticity leaves revenue unchanged, cap of zero, closed-form break-even elasticity, grid shape |
 
 The pooled elasticity tests use data generated from a **known** elasticity. One test builds busy weeks
 that have both more discounting and more demand: the naive estimate is −3.6 against a true −1.0, and
@@ -284,6 +318,8 @@ pull request targeting `main`, on Python 3.11.
 - Seasonality inflates promo effects: when busy weeks have both more discounts and more demand, a naive
   elasticity looks far too large. Fixed effects fix it.
 - Cluster-robust standard errors are only well calibrated with enough clusters (about 100 here vs 20).
+- Check simulations against identities you already know: removing every discount with no volume change must
+  gain exactly the total discounts, and unit elasticity must leave net sales unchanged.
 - Work in dollars, not ratios: a median of per-transaction break-even ratios understates the lift needed,
   because low-margin products carry most of the discount dollars.
 
@@ -295,9 +331,9 @@ pull request targeting `main`, on Python 3.11.
 - [x] Data diagnostics
 - [x] Pooled fixed-effects elasticity
 - [x] Break-even analysis and below-cost check
-- [ ] Complete SKU × week panel with zero-sales periods filled in, for traffic-based analysis
-- [ ] Discount-cap scenario simulation with sensitivity to the assumed elasticity
-- [ ] Wire diagnostics, pooled elasticity and break-even into the pipeline and rebuild the charts
+- [x] Discount-cap scenario simulation with break-even elasticity
+- [ ] Wire diagnostics, pooled elasticity, break-even and scenarios into the pipeline and rebuild the charts
+- [ ] SKU × week traffic panel (only informative once a promo calendar is available)
 - [ ] Input schema validation
 - [ ] Engineering polish: `pyproject.toml`, ruff, mypy, coverage, Python version matrix
 - [ ] Rewrite `STAKEHOLDER_SUMMARY.md` around the corrected findings
