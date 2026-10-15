@@ -185,21 +185,34 @@ from src.data.loader import load_all
 from src.data.cleaning import clean_fact_sales
 from src.features.build_features import build_sales_analysis_table
 from src.analysis.diagnostics import run_promo_diagnostics
-from src.analysis.pooled_elasticity import estimate_pooled_elasticity, pooled_elasticity_by_group
+from src.analysis.pooled_elasticity import (
+    estimate_pooled_elasticity,
+    pooled_elasticity_by_group,
+)
 from src.analysis.breakeven import breakeven_table, discount_cost_summary
 
 tables = load_all()
 cleaned, qa = clean_fact_sales(
-    tables["sales"], tables["customer"], tables["product"], tables["store"], tables["date"]
+    tables["sales"],
+    tables["customer"],
+    tables["product"],
+    tables["store"],
+    tables["date"],
 )
-analysis = build_sales_analysis_table(cleaned, tables["customer"], tables["store"], tables["date"])
-analysis["year_week"] = analysis["year"].astype(str) + "-" + analysis["week"].astype(str)
+analysis = build_sales_analysis_table(
+    cleaned, tables["customer"], tables["store"], tables["date"]
+)
+analysis["year_week"] = (
+    analysis["year"].astype(str) + "-" + analysis["week"].astype(str)
+)
 
 diagnostics = run_promo_diagnostics(analysis)
 overall = estimate_pooled_elasticity(analysis)
-with_seasonality = estimate_pooled_elasticity(analysis, fixed_effects=("product_id", "year_week"))
+with_seasonality = estimate_pooled_elasticity(
+    analysis, fixed_effects=("product_id", "year_week")
+)
 by_category = pooled_elasticity_by_group(analysis, "category")
-breakeven = breakeven_table(analysis)                       # add ["category"] to split by category
+breakeven = breakeven_table(analysis)  # add ["category"] to split by category
 cost = discount_cost_summary(analysis)
 ```
 
