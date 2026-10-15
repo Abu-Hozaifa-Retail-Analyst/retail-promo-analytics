@@ -23,6 +23,7 @@ class QASummary:
     invalid_date_outside_calendar: int = 0
     invalid_zero_quantity: int = 0
     invalid_nonpositive_price: int = 0
+    invalid_discount_exceeds_gross: int = 0
     missing_customer_id: int = 0
     orphan_customer_id: int = 0
     total_invalid_rows: int = 0
@@ -42,6 +43,7 @@ class QASummary:
             "invalid_date_outside_calendar": self.invalid_date_outside_calendar,
             "invalid_zero_quantity": self.invalid_zero_quantity,
             "invalid_nonpositive_price": self.invalid_nonpositive_price,
+            "invalid_discount_exceeds_gross": self.invalid_discount_exceeds_gross,
             "missing_customer_id": self.missing_customer_id,
             "orphan_customer_id": self.orphan_customer_id,
             "total_invalid_rows": self.total_invalid_rows,
@@ -58,6 +60,12 @@ def clean_fact_sales(
     store: pd.DataFrame,
     date: pd.DataFrame,
 ) -> tuple[pd.DataFrame, QASummary]:
+    """Deduplicate, validate, and recompute canonical fields for fact_sales.
+
+    Rows are never silently dropped: problems are flagged (`is_valid`,
+    `invalid_reasons`, `is_return`, `has_valid_customer`, `qa_mismatch`)
+    so every exclusion stays auditable.
+    """
     df = sales.copy()
     qa = QASummary()
     qa.total_rows_raw = len(df)
@@ -83,6 +91,12 @@ def clean_fact_sales(
     # not a data-quality problem — handled separately below.
     bad_quantity = df["quantity"] == 0
     bad_price = df["unit_price"] <= 0
+    # A discount larger than the gross sale (> 100% off) makes net sales negative
+    # on an ordinary sale, which is a data error, not a promotion. Returns
+    # (quantity < 0) are excluded so they are never caught by this rule.
+    bad_discount = (df["quantity"] > 0) & (
+        df["discount_amount"] > df["quantity"] * df["unit_price"]
+    )
 
     qa.invalid_bad_product_fk = int(bad_product.sum())
     qa.invalid_bad_store_fk = int(bad_store.sum())
@@ -90,6 +104,7 @@ def clean_fact_sales(
     qa.invalid_date_outside_calendar = int(outside_calendar.sum())
     qa.invalid_zero_quantity = int(bad_quantity.sum())
     qa.invalid_nonpositive_price = int(bad_price.sum())
+    qa.invalid_discount_exceeds_gross = int(bad_discount.sum())
     valid_customer_ids = set(customer["customer_id"])
     bad_customer = ~df["customer_id"].isna() & ~df["customer_id"].isin(
         valid_customer_ids
@@ -105,6 +120,7 @@ def clean_fact_sales(
         | outside_calendar
         | bad_quantity
         | bad_price
+        | bad_discount
     )
     df["is_valid"] = ~core_invalid
 
@@ -115,6 +131,7 @@ def clean_fact_sales(
         "date_outside_calendar": outside_calendar,
         "zero_quantity": bad_quantity,
         "nonpositive_price": bad_price,
+        "discount_exceeds_gross": bad_discount,
     }
     reason_df = pd.DataFrame(reason_flags)
     df["invalid_reasons"] = reason_df.apply(
@@ -178,10 +195,12 @@ def qa_summary_to_markdown(qa: QASummary) -> str:
         f"| Invalid: date outside calendar | {qa.invalid_date_outside_calendar:,} |",
         f"| Invalid: zero quantity | {qa.invalid_zero_quantity:,} |",
         f"| Invalid: non-positive price | {qa.invalid_nonpositive_price:,} |",
+        f"| Invalid: discount exceeds gross sale | {qa.invalid_discount_exceeds_gross:,} |",
         f"| **Total invalid rows (excluded from aggregates)** | **{qa.total_invalid_rows:,}** |",
         f"| **Total valid rows** | **{qa.total_valid_rows:,}** |",
         f"| Return rows (kept, analyzed separately) | {qa.return_rows:,} |",
         f"| Missing customer_id | {qa.missing_customer_id:,} |",
+        f"| Customer_id not in dim_customer | {qa.orphan_customer_id:,} |",
     ]
     for name, count in qa.financial_field_mismatches.items():
         lines.append(f"| QA mismatch: {name} (source vs recomputed) | {count:,} |")
