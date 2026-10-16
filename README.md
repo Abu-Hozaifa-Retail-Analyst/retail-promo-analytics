@@ -11,9 +11,7 @@
 > at 10% would add about **5.9M SAR (+3.5%)** if volume does not react, and still pays unless demand is more
 > price-sensitive than **−6.4**. Whether discounts bring in extra transactions cannot be observed in this data.
 >
-> ⚠️ `STAKEHOLDER_SUMMARY.md` predates a methodology review and is being rewritten. Its headline
-> figures (20.2M SAR lost, "0 of 500 SKUs profitable") are **superseded**; see
-> [Legacy analyses and known limitations](#legacy-analyses-and-known-limitations).
+> For a decision-oriented write-up, see [`STAKEHOLDER_SUMMARY.md`](STAKEHOLDER_SUMMARY.md).
 
 ## Questions this project answers
 
@@ -126,20 +124,17 @@ retail-promo-analytics/
 │   │   ├── pooled_elasticity.py    # fixed-effects elasticity, clustered standard errors
 │   │   ├── breakeven.py            # required vs observed volume lift, discount cost summary
 │   │   ├── scenarios.py            # discount-cap simulation, break-even elasticity
-│   │   ├── returns.py              # return rate and net profit impact
-│   │   ├── promo_lift.py           # legacy (see known limitations)
-│   │   ├── margin_erosion.py       # legacy
-│   │   ├── promo_ranking.py        # legacy
-│   │   └── elasticity.py           # legacy per-SKU regressions
+│   │   └── returns.py              # return rate and net profit impact
 │   ├── utils/parallel.py           # joblib wrapper for independent per-group work
-│   ├── visualization.py            # matplotlib / seaborn charts
-│   └── pipeline.py                 # load -> clean -> legacy analyses -> save
-├── tests/                          # 51 pytest tests
+│   ├── visualization.py            # break-even, elasticity, scenario and return-rate charts
+│   └── pipeline.py                 # load -> clean -> analyze -> save tables -> draw charts
+├── tests/                          # 47 pytest tests
+├── docs/figures/                   # charts shown in this README
 ├── data/raw/                       # your 5 source CSVs go here (gitignored)
 ├── outputs/                        # generated tables and charts (gitignored)
 ├── pytest.ini
 ├── requirements.txt
-├── STAKEHOLDER_SUMMARY.md          # being rewritten
+├── STAKEHOLDER_SUMMARY.md          # decision-oriented summary of the findings
 └── LICENSE
 ```
 
@@ -198,81 +193,73 @@ The pipeline writes the full report to `outputs/reports/qa_report.md`.
 
 ## Running the analysis
 
-Run the pipeline (loads, cleans, runs the legacy analyses, writes tables and a QA report to
-`outputs/reports/`):
-
 ```powershell
 python -m src.pipeline
 ```
 
+One command loads and cleans the data, runs the diagnostics, pooled elasticity, break-even analysis,
+discount-cap scenarios and return rates, then writes every table to `outputs/reports/` and four charts to
+`outputs/figures/`. It takes about five seconds on this dataset.
+
 Always use `python -m src.pipeline`, not `python src/pipeline.py`. The `-m` flag puts the project root
 on the import path so `from src...` imports resolve.
 
-Run the diagnostics, pooled elasticity and break-even analysis (not yet wired into the pipeline):
+| Output (in `outputs/reports/`) | Contents |
+|---|---|
+| `qa_report.md`, `qa_report.json` | Data-quality counts from cleaning |
+| `diagnostics_summary.json` | Promo share, panel sparsity, persistence, demand response, discount cost summary |
+| `promo_assignment.csv`, `demand_by_depth.csv` | Promo share by dimension; quantity and margin by discount depth |
+| `pooled_elasticity.csv`, `pooled_elasticity_by_category.csv` | Elasticity with 95% intervals (three specifications; by category) |
+| `breakeven.csv` | Required vs observed volume lift for each discount depth |
+| `scenario_grid.csv`, `scenario_curve.csv`, `breakeven_elasticity.csv` | Discount-cap results, the curves behind the chart, and break-even elasticities |
+| `return_rate_category.csv` | Return rate and net profit impact by category |
+
+Files in `outputs/` from earlier versions of the pipeline (for example `promo_lift_*.csv` or
+`promo_profitability_scatter.png`) are not overwritten. Delete them before the first run so stale legacy
+results cannot be mistaken for current ones.
+
+To use the results from a notebook:
 
 ```python
-from src.data.loader import load_all
-from src.data.cleaning import clean_fact_sales
-from src.features.build_features import build_sales_analysis_table
-from src.analysis.diagnostics import run_promo_diagnostics
-from src.analysis.pooled_elasticity import (
-    estimate_pooled_elasticity,
-    pooled_elasticity_by_group,
-)
-from src.analysis.breakeven import breakeven_table, discount_cost_summary
-from src.analysis.scenarios import scenario_grid, breakeven_elasticity
+from src.pipeline import run_full_pipeline
 
-tables = load_all()
-cleaned, qa = clean_fact_sales(
-    tables["sales"],
-    tables["customer"],
-    tables["product"],
-    tables["store"],
-    tables["date"],
-)
-analysis = build_sales_analysis_table(
-    cleaned, tables["customer"], tables["store"], tables["date"]
-)
-analysis["year_week"] = (
-    analysis["year"].astype(str) + "-" + analysis["week"].astype(str)
-)
-
-diagnostics = run_promo_diagnostics(analysis)
-overall = estimate_pooled_elasticity(analysis)
-with_seasonality = estimate_pooled_elasticity(
-    analysis, fixed_effects=("product_id", "year_week")
-)
-by_category = pooled_elasticity_by_group(analysis, "category")
-breakeven = breakeven_table(analysis)  # add ["category"] to split by category
-cost = discount_cost_summary(analysis)
-scenarios = scenario_grid(analysis)  # caps x elasticities
-cap_10_breakeven = breakeven_elasticity(analysis, cap=0.10)
+results = run_full_pipeline(make_charts=False)
+results["breakeven"]  # required vs observed lift by discount depth
+results["scenario_grid"]  # caps x elasticities
+results["discount_cost"]  # total discounts, share of profit, below-cost sales
+results["analysis_df"]  # the transaction-level analysis table
 ```
 
 ### Charts
 
-`src/visualization.py` generates PNGs into `outputs/figures/`. The current chart set is built from the
-legacy analyses, so treat `promo_profitability_scatter.png` as superseded until the charts are rebuilt
-(see the roadmap).
+Generated into `outputs/figures/` by `src/visualization.py`; the copies below are committed in
+`docs/figures/`. Caveats are written onto the charts so they travel with the image.
 
-## Legacy analyses and known limitations
+![Break-even gap](docs/figures/breakeven_gap.png)
 
-`promo_lift.py`, `margin_erosion.py`, `promo_ranking.py` and `elasticity.py` compare "promo days" with
-"non-promo days" per SKU or category. A methodology review found problems that make their headline
-numbers unreliable. They remain in the repo, and the pipeline still runs them, until the replacements
-land.
+![Price elasticity estimates](docs/figures/elasticity_estimates.png)
 
-| Limitation | Why it matters |
+![Discount-cap profit curves](docs/figures/scenario_profit_curves.png)
+
+![Return rate by category](docs/figures/return_rate_by_category.png)
+
+## Methodology review: what the first version got wrong
+
+The first version of this project compared "promo days" with "non-promo days" for each SKU or category. A
+review found problems that made its headline numbers (20.2M SAR lost, "0 of 500 SKUs profitable")
+unreliable, so that code was removed and replaced by the analyses above. It remains in the git history.
+
+| What went wrong | Why it mattered |
 |---|---|
-| The daily grouping only creates rows for days that had a sale | 72% of SKU-days are ignored, and "units per day" is effectively quantity per transaction |
-| Promo status is set per transaction | One calendar day can fall into both regimes, and there are no real promo periods to compare |
-| Category-level lift compares buckets of unequal size (about 55% vs 45% of transactions) | It showed positive lift for every category and contradicted the SKU level; treat it as an artifact |
-| SKU-level "negative revenue lift" mostly reflects the discount itself | Revenue per transaction is 9.9% lower on promos against an average depth of 9.2%, because quantity does not respond |
-| Incremental-profit totals depend on the grouping | The same code gives 18.9M SAR at category level and 36.2M SAR at SKU level, so neither is a reliable headline |
-| Per-SKU elasticity regressions use about 240 transactions each | Estimates are noise around zero (only 2% significant); replaced by the pooled estimate |
+| The daily grouping only created rows for days that had a sale | 72% of SKU-days were ignored, and "units per day" was effectively quantity per transaction |
+| Promo status is set per transaction | One calendar day could fall into both regimes, and there are no real promo periods to compare |
+| Category-level lift compared buckets of unequal size (about 55% vs 45% of transactions) | It showed positive lift for every category and contradicted the SKU level; it was an artifact |
+| SKU-level "negative revenue lift" mostly reflected the discount itself | Revenue per transaction is 9.9% lower on promos against an average depth of 9.2%, because quantity does not respond |
+| Incremental-profit totals depended on the grouping | The same code gave 18.9M SAR at category level and 36.2M SAR at SKU level, so neither was a reliable headline |
+| Per-SKU elasticity regressions used about 240 transactions each | Estimates were noise around zero (only 2% significant); replaced by the pooled estimate |
 
-The earlier headline "0 of 500 SKUs ran a profitable promotion" follows mechanically from the fourth row:
-with no quantity response, profit per transaction must fall by the discount. It describes the data, not
+The old headline "0 of 500 SKUs ran a profitable promotion" followed mechanically from the fourth row:
+with no quantity response, profit per transaction must fall by the discount. It described the data, not
 a finding about promotion strategy.
 
 ## Testing
@@ -281,18 +268,18 @@ a finding about promotion strategy.
 pytest -v
 ```
 
-51 tests:
+47 tests:
 
 | File | Tests | Covers |
 |---|---|---|
 | `test_cleaning.py` | 13 | One test per data-quality rule, QA summary |
 | `test_build_features.py` | 4 | Promo derivation, joins, default exclusions |
 | `test_parallel.py` | 4 | Grouping, key handling, filtering |
-| `test_promo_analysis.py` | 3 | Legacy lift, erosion and ranking math against hand-checked fixtures |
-| `test_elasticity_and_returns.py` | 4 | Legacy elasticity (known slope recovered), guard conditions, return rate |
+| `test_returns.py` | 1 | Return rate against the shared fixture |
 | `test_diagnostics.py` | 5 | Sparsity, assignment profile, persistence, demand response |
 | `test_pooled_elasticity.py` | 4 | Known elasticity recovered, zero response, and week effects removing seasonal confounding |
 | `test_breakeven.py` | 6 | Depth snapping, textbook break-even formula, below-cost, extra traffic needed, per-group margins, cost summary |
+| `test_pipeline.py` | 2 | End-to-end run on a synthetic star schema with planted problems: every table and chart is written, QA counts match, and the cap-of-zero identity holds |
 | `test_scenarios.py` | 8 | Exact gain with no response, untouched sales, volume reaction, unit elasticity leaves revenue unchanged, cap of zero, closed-form break-even elasticity, grid shape |
 
 The pooled elasticity tests use data generated from a **known** elasticity. One test builds busy weeks
@@ -302,7 +289,8 @@ adding week effects recovers −0.98.
 ## Continuous integration
 
 GitHub Actions (`.github/workflows/ci.yml`) runs the full test suite on every push to `main` and on every
-pull request targeting `main`, on Python 3.11.
+pull request targeting `main`, on Python 3.11. The suite includes an end-to-end pipeline test on a small
+synthetic dataset, because the real data is gitignored.
 
 ## Lessons learned
 
@@ -320,23 +308,29 @@ pull request targeting `main`, on Python 3.11.
 - Cluster-robust standard errors are only well calibrated with enough clusters (about 100 here vs 20).
 - Check simulations against identities you already know: removing every discount with no volume change must
   gain exactly the total discounts, and unit elasticity must leave net sales unchanged.
+- If the real data is gitignored, CI never runs the pipeline. Add an end-to-end test on a small synthetic
+  dataset with planted problems (a duplicate, an over-100% discount, a return) so a broken pipeline cannot merge.
+- Look at every chart before shipping it. A clipped axis label, an overlapping annotation and a label drawn
+  outside the plot area all passed the code and were only visible in the image.
+- Delete code you know is wrong instead of keeping it "for reference". Keep the lesson in the docs and the
+  code in git history.
 - Work in dollars, not ratios: a median of per-transaction break-even ratios understates the lift needed,
   because low-margin products carry most of the discount dollars.
 
 ## Roadmap
 
 - [x] Loader, cleaning, feature engineering, parallel utility
-- [x] Legacy lift, erosion, ranking, elasticity and returns analyses
+- [x] First-version analyses (lift, erosion, ranking, per-SKU elasticity), later removed after a methodology review
 - [x] Tests and CI
 - [x] Data diagnostics
 - [x] Pooled fixed-effects elasticity
 - [x] Break-even analysis and below-cost check
 - [x] Discount-cap scenario simulation with break-even elasticity
-- [ ] Wire diagnostics, pooled elasticity, break-even and scenarios into the pipeline and rebuild the charts
+- [x] Wire diagnostics, pooled elasticity, break-even and scenarios into the pipeline and rebuild the charts
+- [x] Remove the superseded first-version code and rewrite `STAKEHOLDER_SUMMARY.md`
 - [ ] SKU × week traffic panel (only informative once a promo calendar is available)
 - [ ] Input schema validation
 - [ ] Engineering polish: `pyproject.toml`, ruff, mypy, coverage, Python version matrix
-- [ ] Rewrite `STAKEHOLDER_SUMMARY.md` around the corrected findings
 - [ ] Notebook walkthrough
 - [ ] Repository description and topics, `v1.0` release
 
