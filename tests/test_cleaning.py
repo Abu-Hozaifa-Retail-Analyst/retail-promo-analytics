@@ -1,231 +1,120 @@
-"""Data-quality handling for fact_sales."""
+"""Unit tests for src.data.cleaning.clean_fact_sales.
+
+Each test targets one data-quality rule, using the small shared fixture in
+conftest.py where each row was built to trigger exactly one rule.
+"""
 
 from __future__ import annotations
-
-from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
 
-_MISMATCH_TOLERANCE = 0.01
+from src.data.cleaning import clean_fact_sales
 
 
-@dataclass
-class QASummary:
-    """Structured data-quality report produced while cleaning fact_sales."""
+def test_deduplicates_exact_transaction_id(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date):
+    cleaned, qa = clean_fact_sales(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date)
+    assert qa.duplicate_rows_removed == 1
+    assert (cleaned["transaction_id"] == "T001").sum() == 1
 
-    total_rows_raw: int = 0
-    duplicate_rows_removed: int = 0
-    total_rows_after_dedup: int = 0
-    invalid_bad_product_fk: int = 0
-    invalid_bad_store_fk: int = 0
-    invalid_missing_date: int = 0
-    invalid_date_outside_calendar: int = 0
-    invalid_zero_quantity: int = 0
-    invalid_nonpositive_price: int = 0
-    invalid_discount_exceeds_gross: int = 0
-    missing_customer_id: int = 0
-    orphan_customer_id: int = 0
-    total_invalid_rows: int = 0
-    total_valid_rows: int = 0
-    return_rows: int = 0
-    financial_field_mismatches: dict[str, int] = field(default_factory=dict)
+
+def test_flags_bad_product_fk_but_keeps_row(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date):
+    cleaned, qa = clean_fact_sales(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date)
+    row = cleaned[cleaned["transaction_id"] == "T004"].iloc[0]
+    assert not row["is_valid"]
+    assert "bad_product_fk" in row["invalid_reasons"]
+    assert qa.invalid_bad_product_fk == 1
+
+
+def test_flags_bad_store_fk_but_keeps_row(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date):
+    cleaned, qa = clean_fact_sales(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date)
+    row = cleaned[cleaned["transaction_id"] == "T005"].iloc[0]
+    assert not row["is_valid"]
+    assert "bad_store_fk" in row["invalid_reasons"]
+
+
+def test_zero_quantity_is_invalid(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date):
+    cleaned, qa = clean_fact_sales(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date)
+    row = cleaned[cleaned["transaction_id"] == "T006"].iloc[0]
+    assert not row["is_valid"]
+    assert "zero_quantity" in row["invalid_reasons"]
+
+
+def test_negative_quantity_is_a_return_not_invalid(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date):
+    """Regression test: negative quantity (a return) must stay valid, not be caught by the zero-quantity check."""
+    cleaned, qa = clean_fact_sales(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date)
+    row = cleaned[cleaned["transaction_id"] == "T007"].iloc[0]
+    assert row["is_return"]
+    assert row["is_valid"]
+    assert row["invalid_reasons"] == ""
+
+
+def test_nonpositive_price_is_invalid(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date):
+    cleaned, qa = clean_fact_sales(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date)
+    row = cleaned[cleaned["transaction_id"] == "T008"].iloc[0]
+    assert not row["is_valid"]
+    assert "nonpositive_price" in row["invalid_reasons"]
+
+
+def test_date_outside_calendar_is_invalid(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date):
+    cleaned, qa = clean_fact_sales(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date)
+    row = cleaned[cleaned["transaction_id"] == "T009"].iloc[0]
+    assert not row["is_valid"]
+    assert "date_outside_calendar" in row["invalid_reasons"]
+
+
+def test_recomputes_canonical_financial_fields(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date):
+    """T010's source gross_sales (999.0) is deliberately wrong; quantity 2 x price 40 = 80 is canonical."""
+    cleaned, qa = clean_fact_sales(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date)
+    row = cleaned[cleaned["transaction_id"] == "T010"].iloc[0]
+    assert row["gross_sales"] == 80.0
+    assert row["qa_mismatch"]
+    assert qa.financial_field_mismatches["gross_sales"] == 1
+
+
+def test_orphan_customer_flagged_but_row_stays_valid(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date):
+    """A bad customer_id must not make the row invalid (it does not affect revenue or margin math)."""
+    cleaned, qa = clean_fact_sales(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date)
+    row = cleaned[cleaned["transaction_id"] == "T011"].iloc[0]
+    assert not row["has_valid_customer"]
+    assert row["is_valid"]
+    assert qa.orphan_customer_id == 1
+
+
+def test_category_replaced_with_clean_dim_product_join(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date):
+    cleaned, qa = clean_fact_sales(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date)
+    clean_row = cleaned[cleaned["transaction_id"] == "T001"].iloc[0]
+    assert clean_row["category"] == "Electronics"
+
+
+def test_no_rows_are_dropped_only_flagged(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date):
+    cleaned, qa = clean_fact_sales(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date)
+    # 11 raw rows, 1 exact duplicate removed -> 10 remain, ALL kept (flagged, not dropped)
+    assert qa.total_rows_raw == 11
+    assert len(cleaned) == 10
+
+
+def test_qa_summary_as_dict(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date):
+    cleaned, qa = clean_fact_sales(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date)
+    d = qa.as_dict()
+    assert d["total_rows_raw"] == 11
+    assert d["duplicate_rows_removed"] == 1
+    assert isinstance(d["financial_field_mismatches"], dict)
 
 
 def test_discount_exceeding_gross_sale_is_invalid_but_returns_are_not(
     raw_fact_sales, dim_customer, dim_product, dim_store, dim_date
 ):
     """A discount above 100% of the sale is a data error. Returns (quantity < 0) must never trip it."""
-    extra = raw_fact_sales[
-        raw_fact_sales["transaction_id"] == "T003"
-    ].copy()  # qty 3 x 100 = 300 gross
+    extra = raw_fact_sales[raw_fact_sales["transaction_id"] == "T003"].copy()  # qty 3 x 100 = 300 gross
     extra["transaction_id"] = "T012"
     extra["discount_amount"] = 450.0  # 150% of the sale
     sales = pd.concat([raw_fact_sales, extra], ignore_index=True)
 
-    cleaned, qa = clean_fact_sales(
-        sales, dim_customer, dim_product, dim_store, dim_date
-    )
+    cleaned, qa = clean_fact_sales(sales, dim_customer, dim_product, dim_store, dim_date)
 
     row = cleaned[cleaned["transaction_id"] == "T012"].iloc[0]
     assert not row["is_valid"]
     assert "discount_exceeds_gross" in row["invalid_reasons"]
     assert qa.invalid_discount_exceeds_gross == 1
-    assert cleaned[cleaned["transaction_id"] == "T007"].iloc[0][
-        "is_valid"
-    ]  # the return stays valid
-
-    def as_dict(self) -> dict:
-        """Convert to a plain dict, e.g. for JSON serialization."""
-        return {
-            "total_rows_raw": self.total_rows_raw,
-            "duplicate_rows_removed": self.duplicate_rows_removed,
-            "total_rows_after_dedup": self.total_rows_after_dedup,
-            "invalid_bad_product_fk": self.invalid_bad_product_fk,
-            "invalid_bad_store_fk": self.invalid_bad_store_fk,
-            "invalid_missing_date": self.invalid_missing_date,
-            "invalid_date_outside_calendar": self.invalid_date_outside_calendar,
-            "invalid_zero_quantity": self.invalid_zero_quantity,
-            "invalid_nonpositive_price": self.invalid_nonpositive_price,
-            "invalid_discount_exceeds_gross": self.invalid_discount_exceeds_gross,
-            "missing_customer_id": self.missing_customer_id,
-            "orphan_customer_id": self.orphan_customer_id,
-            "total_invalid_rows": self.total_invalid_rows,
-            "total_valid_rows": self.total_valid_rows,
-            "return_rows": self.return_rows,
-            "financial_field_mismatches": self.financial_field_mismatches,
-        }
-
-
-def clean_fact_sales(
-    sales: pd.DataFrame,
-    customer: pd.DataFrame,
-    product: pd.DataFrame,
-    store: pd.DataFrame,
-    date: pd.DataFrame,
-) -> tuple[pd.DataFrame, QASummary]:
-    """Deduplicate, validate, and recompute canonical fields for fact_sales.
-
-    Rows are never silently dropped: problems are flagged (`is_valid`,
-    `invalid_reasons`, `is_return`, `has_valid_customer`, `qa_mismatch`)
-    so every exclusion stays auditable.
-    """
-    df = sales.copy()
-    qa = QASummary()
-    qa.total_rows_raw = len(df)
-
-    # --- 1. Deduplicate exact transaction_id repeats (keep first) -----
-    dupe_mask = df["transaction_id"].duplicated(keep="first")
-    qa.duplicate_rows_removed = int(dupe_mask.sum())
-    df = df.loc[~dupe_mask].reset_index(drop=True)
-    qa.total_rows_after_dedup = len(df)
-
-    # --- 2. Validity flags (rows are KEPT, only flagged) --------------
-    valid_product_ids = set(product["product_id"])
-    valid_store_ids = set(store["store_id"])
-    min_date, max_date = date["date"].min(), date["date"].max()
-
-    bad_product = ~df["product_id"].isin(valid_product_ids)
-    bad_store = ~df["store_id"].isin(valid_store_ids)
-    missing_date = df["transaction_date"].isna()
-    outside_calendar = (~missing_date) & (
-        (df["transaction_date"] < min_date) | (df["transaction_date"] > max_date)
-    )
-    # Only quantity == 0 is invalid. Negative quantity is a RETURN,
-    # not a data-quality problem — handled separately below.
-    bad_quantity = df["quantity"] == 0
-    bad_price = df["unit_price"] <= 0
-    # A discount larger than the gross sale (> 100% off) makes net sales negative
-    # on an ordinary sale, which is a data error, not a promotion. Returns
-    # (quantity < 0) are excluded so they are never caught by this rule.
-    bad_discount = (df["quantity"] > 0) & (
-        df["discount_amount"] > df["quantity"] * df["unit_price"]
-    )
-
-    qa.invalid_bad_product_fk = int(bad_product.sum())
-    qa.invalid_bad_store_fk = int(bad_store.sum())
-    qa.invalid_missing_date = int(missing_date.sum())
-    qa.invalid_date_outside_calendar = int(outside_calendar.sum())
-    qa.invalid_zero_quantity = int(bad_quantity.sum())
-    qa.invalid_nonpositive_price = int(bad_price.sum())
-    qa.invalid_discount_exceeds_gross = int(bad_discount.sum())
-    valid_customer_ids = set(customer["customer_id"])
-    bad_customer = ~df["customer_id"].isna() & ~df["customer_id"].isin(
-        valid_customer_ids
-    )
-    qa.missing_customer_id = int(df["customer_id"].isna().sum())
-    qa.orphan_customer_id = int(bad_customer.sum())
-    df["has_valid_customer"] = ~df["customer_id"].isna() & ~bad_customer
-
-    core_invalid = (
-        bad_product
-        | bad_store
-        | missing_date
-        | outside_calendar
-        | bad_quantity
-        | bad_price
-        | bad_discount
-    )
-    df["is_valid"] = ~core_invalid
-
-    reason_flags = {
-        "bad_product_fk": bad_product,
-        "bad_store_fk": bad_store,
-        "missing_date": missing_date,
-        "date_outside_calendar": outside_calendar,
-        "zero_quantity": bad_quantity,
-        "nonpositive_price": bad_price,
-        "discount_exceeds_gross": bad_discount,
-    }
-    reason_df = pd.DataFrame(reason_flags)
-    df["invalid_reasons"] = reason_df.apply(
-        lambda row: "|".join([name for name, flag in row.items() if flag]),
-        axis=1,
-    )
-
-    qa.total_invalid_rows = int((~df["is_valid"]).sum())
-    qa.total_valid_rows = int(df["is_valid"].sum())
-
-    df["is_return"] = df["quantity"] < 0
-    qa.return_rows = int(df["is_return"].sum())
-
-    # --- 3. Recompute canonical financial fields -----------------------
-    calc_gross = df["quantity"] * df["unit_price"]
-    calc_net = calc_gross - df["discount_amount"]
-    calc_cost = df["quantity"] * df["unit_cost"]
-    calc_profit = calc_net - calc_cost
-    calc_margin = np.where(calc_net != 0, (calc_profit / calc_net) * 100, np.nan)
-
-    for name, provided_col, recomputed in [
-        ("gross_sales", "gross_sales", calc_gross),
-        ("net_sales", "net_sales", calc_net),
-        ("cost_amount", "cost_amount", calc_cost),
-        ("profit_amount", "profit_amount", calc_profit),
-        ("gross_margin_pct", "gross_margin_pct", calc_margin),
-    ]:
-        mismatch = (df[provided_col] - recomputed).abs() > _MISMATCH_TOLERANCE
-        mismatch = mismatch.fillna(False)
-        qa.financial_field_mismatches[name] = int(mismatch.sum())
-        df[f"_mismatch_{name}"] = mismatch
-
-    mismatch_cols = [c for c in df.columns if c.startswith("_mismatch_")]
-    df["qa_mismatch"] = df[mismatch_cols].any(axis=1)
-    df = df.drop(columns=mismatch_cols)
-
-    df["gross_sales"] = calc_gross
-    df["net_sales"] = calc_net
-    df["cost_amount"] = calc_cost
-    df["profit_amount"] = calc_profit
-    df["gross_margin_pct"] = calc_margin
-
-    # --- 4. Replace noisy category column with clean dim_product join --
-    df = df.drop(columns=["category"])
-    df = df.merge(product[["product_id", "category"]], on="product_id", how="left")
-
-    return df, qa
-
-
-def qa_summary_to_markdown(qa: QASummary) -> str:
-    """Render a QASummary as a short Markdown table."""
-    lines = [
-        "| Metric | Value |",
-        "|---|---|",
-        f"| Raw rows | {qa.total_rows_raw:,} |",
-        f"| Duplicate rows removed | {qa.duplicate_rows_removed:,} |",
-        f"| Rows after dedup | {qa.total_rows_after_dedup:,} |",
-        f"| Invalid: bad product FK | {qa.invalid_bad_product_fk:,} |",
-        f"| Invalid: bad store FK | {qa.invalid_bad_store_fk:,} |",
-        f"| Invalid: missing date | {qa.invalid_missing_date:,} |",
-        f"| Invalid: date outside calendar | {qa.invalid_date_outside_calendar:,} |",
-        f"| Invalid: zero quantity | {qa.invalid_zero_quantity:,} |",
-        f"| Invalid: non-positive price | {qa.invalid_nonpositive_price:,} |",
-        f"| Invalid: discount exceeds gross sale | {qa.invalid_discount_exceeds_gross:,} |",
-        f"| **Total invalid rows (excluded from aggregates)** | **{qa.total_invalid_rows:,}** |",
-        f"| **Total valid rows** | **{qa.total_valid_rows:,}** |",
-        f"| Return rows (kept, analyzed separately) | {qa.return_rows:,} |",
-        f"| Missing customer_id | {qa.missing_customer_id:,} |",
-        f"| Customer_id not in dim_customer | {qa.orphan_customer_id:,} |",
-    ]
-    for name, count in qa.financial_field_mismatches.items():
-        lines.append(f"| QA mismatch: {name} (source vs recomputed) | {count:,} |")
-    return "\n".join(lines)
+    assert cleaned[cleaned["transaction_id"] == "T007"].iloc[0]["is_valid"]  # the return stays valid
