@@ -112,7 +112,7 @@ raw CSVs ──► loader ──► cleaning (flag, don't drop) ──► analys
 
 ```
 retail-promo-analytics/
-├── .github/workflows/ci.yml        # run tests on every push to main and on pull requests
+├── .github/workflows/ci.yml        # lint, tests on Python 3.11 and 3.13, coverage, test-count guard
 ├── src/
 │   ├── data/
 │   │   ├── loader.py               # read raw CSVs from data/raw/
@@ -132,21 +132,25 @@ retail-promo-analytics/
 ├── docs/figures/                   # charts shown in this README
 ├── data/raw/                       # your 5 source CSVs go here (gitignored)
 ├── outputs/                        # generated tables and charts (gitignored)
-├── pytest.ini
-├── requirements.txt
+├── pyproject.toml                  # ruff, pytest and coverage settings
+├── requirements.txt                # runtime dependencies
+├── requirements-dev.txt            # + pytest, pytest-cov, ruff
 ├── STAKEHOLDER_SUMMARY.md          # decision-oriented summary of the findings
 └── LICENSE
 ```
 
 ## Setup
 
-Python 3.11 or newer (CI runs 3.11; developed on 3.13).
+Python 3.11 or newer (CI tests 3.11 and 3.13).
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1          # macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
+
+`requirements-dev.txt` includes the runtime packages (`requirements.txt`) plus pytest, pytest-cov and ruff.
+To run the analysis only, `pip install -r requirements.txt` is enough.
 
 ## Data expectations
 
@@ -268,6 +272,16 @@ a finding about promotion strategy.
 pytest -v
 ```
 
+### Development checks
+
+CI runs the same three commands, so run them before pushing:
+
+```powershell
+ruff format .            # format the code
+ruff check .             # lint (add --fix to apply safe fixes)
+pytest --cov             # tests with coverage; fails below 90%
+```
+
 47 tests:
 
 | File | Tests | Covers |
@@ -288,9 +302,16 @@ adding week effects recovers −0.98.
 
 ## Continuous integration
 
-GitHub Actions (`.github/workflows/ci.yml`) runs the full test suite on every push to `main` and on every
-pull request targeting `main`, on Python 3.11. The suite includes an end-to-end pipeline test on a small
-synthetic dataset, because the real data is gitignored.
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and on every pull request
+targeting `main`, in two jobs:
+
+- **lint**: `ruff check` and `ruff format --check`.
+- **test**: the full suite on Python 3.11 and 3.13, with coverage (minimum 90%). A guard step fails the
+  run if fewer than 47 tests are collected, so tests cannot disappear unnoticed. Raise the number when
+  you add tests; lowering it should be a deliberate decision.
+
+The suite includes an end-to-end pipeline test on a small synthetic dataset, because the real data is
+gitignored.
 
 ## Lessons learned
 
@@ -314,6 +335,11 @@ synthetic dataset, because the real data is gitignored.
   outside the plot area all passed the code and were only visible in the image.
 - Delete code you know is wrong instead of keeping it "for reference". Keep the lesson in the docs and the
   code in git history.
+- Watch the "collected N items" count. Sixteen tests once went missing (an empty file and a corrupted one)
+  and nothing failed. Coverage did not notice either: it stayed at 99.6% because the end-to-end test runs
+  almost every line. CI now guards the test count directly.
+- Commit deletions explicitly. A file deleted by hand but never staged stayed in the branch, and its import
+  of a removed module broke CI while everything passed locally.
 - Work in dollars, not ratios: a median of per-transaction break-even ratios understates the lift needed,
   because low-margin products carry most of the discount dollars.
 
@@ -330,7 +356,8 @@ synthetic dataset, because the real data is gitignored.
 - [x] Remove the superseded first-version code and rewrite `STAKEHOLDER_SUMMARY.md`
 - [ ] SKU × week traffic panel (only informative once a promo calendar is available)
 - [ ] Input schema validation
-- [ ] Engineering polish: `pyproject.toml`, ruff, mypy, coverage, Python version matrix
+- [x] Engineering polish: `pyproject.toml`, ruff, coverage threshold, test-count guard, Python 3.11 and 3.13 matrix
+- [ ] Type checking with mypy
 - [ ] Notebook walkthrough
 - [ ] Repository description and topics, `v1.0` release
 
