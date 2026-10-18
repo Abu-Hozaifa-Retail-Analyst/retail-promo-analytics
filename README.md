@@ -279,7 +279,7 @@ CI runs the same three commands, so run them before pushing:
 ```powershell
 ruff format .            # format the code
 ruff check .             # lint (add --fix to apply safe fixes)
-pytest --cov             # tests with coverage; fails below 90%
+pytest --cov             # tests with coverage; fails below 95%
 ```
 
 47 tests:
@@ -306,7 +306,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and on 
 targeting `main`, in two jobs:
 
 - **lint**: `ruff check` and `ruff format --check`.
-- **test**: the full suite on Python 3.11 and 3.13, with coverage (minimum 90%). A guard step fails the
+- **test**: the full suite on Python 3.11 and 3.13, with coverage (minimum 95%). A guard step fails the
   run if fewer than 47 tests are collected, so tests cannot disappear unnoticed. Raise the number when
   you add tests; lowering it should be a deliberate decision.
 
