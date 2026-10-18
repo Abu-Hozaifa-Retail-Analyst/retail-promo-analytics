@@ -100,12 +100,8 @@ def plot_breakeven_gap(breakeven: pd.DataFrame, output_dir: Path) -> Path:
 def plot_scenario_curves(scenario_curve: pd.DataFrame, breakeven_elasticities: pd.DataFrame, output_dir: Path) -> Path:
     """Profit change from capping discounts, across demand responses, with break-even points."""
     fig, ax = plt.subplots(figsize=(9.5, 5.8))
-    palette = dict(
-        zip(
-            sorted(scenario_curve["cap"].unique()),
-            sns.color_palette("viridis", scenario_curve["cap"].nunique()),
-        )
-    )
+    caps = sorted(scenario_curve["cap"].unique())
+    palette = dict(zip(caps, sns.color_palette("viridis", len(caps)), strict=True))
     be = breakeven_elasticities.set_index("cap")["breakeven_elasticity"]
     for cap, g in scenario_curve.groupby("cap"):
         g = g.sort_values("elasticity", ascending=False)
@@ -154,8 +150,8 @@ def plot_scenario_curves(scenario_curve: pd.DataFrame, breakeven_elasticities: p
     ax.legend(loc="upper right")
     _footnote(
         fig,
-        "Dots mark the break-even elasticity of each cap. A model, not a forecast: constant elasticity, no effects on other "
-        "products, loyalty or competitors.",
+        "Dots mark the break-even elasticity of each cap. A model, not a forecast: constant elasticity, "
+        "no effects on other products, loyalty or competitors.",
     )
     return _save(fig, output_dir / "scenario_profit_curves.png")
 
@@ -172,7 +168,7 @@ def plot_elasticity_estimates(spec_table: pd.DataFrame, category_table: pd.DataF
     y[n_specs:] -= 0.6  # visual gap between the overall estimates and the categories
 
     fig, ax = plt.subplots(figsize=(9, 5.8))
-    for yi, (name, est, lo, hi) in zip(y, rows):
+    for yi, (_, est, lo, hi) in zip(y, rows, strict=True):
         ax.errorbar(
             est,
             yi,
