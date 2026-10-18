@@ -35,9 +35,7 @@ def _simulate(df: pd.DataFrame, cap: float, elasticity: float) -> dict[str, floa
 
     depth = np.divide(discount, gross, out=np.zeros_like(gross), where=gross > 0)
     depth = np.clip(depth, 0.0, 0.9999)
-    affected = df["is_promo"].to_numpy() & (
-        nominal_depth(pd.Series(depth)).to_numpy() > cap + 1e-9
-    )
+    affected = df["is_promo"].to_numpy() & (nominal_depth(pd.Series(depth)).to_numpy() > cap + 1e-9)
 
     new_discount = np.where(affected, gross * cap, discount)
     ratio = np.where(affected, (1 - cap) / (1 - depth), 1.0)
@@ -86,9 +84,7 @@ def scenario_grid(
     elasticities: Sequence[float] = DEFAULT_ELASTICITIES,
 ) -> pd.DataFrame:
     """Run every (cap, elasticity) combination and return one row per scenario."""
-    return pd.DataFrame(
-        [simulate_discount_cap(df, c, e) for c in caps for e in elasticities]
-    )
+    return pd.DataFrame([simulate_discount_cap(df, c, e) for c in caps for e in elasticities])
 
 
 def breakeven_elasticity(df: pd.DataFrame, cap: float, lower: float = -50.0) -> float:

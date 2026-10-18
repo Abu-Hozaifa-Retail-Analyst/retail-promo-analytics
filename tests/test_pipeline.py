@@ -10,9 +10,7 @@ import json
 import os
 from pathlib import Path
 
-os.environ.setdefault(
-    "MPLBACKEND", "Agg"
-)  # draw charts without a display; read when matplotlib is first imported
+os.environ.setdefault("MPLBACKEND", "Agg")  # draw charts without a display; read when matplotlib is first imported
 
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
@@ -103,9 +101,7 @@ def _write_synthetic_star_schema(data_dir: Path, seed: int = 0) -> None:
     qty = rng.integers(1, 6, n_txn)
     price = product["selling_price"].to_numpy()[idx]
     cost = product["unit_cost"].to_numpy()[idx]
-    depth = rng.choice(
-        [0.0, 0.0, 0.05, 0.10, 0.15, 0.20], n_txn
-    )  # discounts independent of quantity
+    depth = rng.choice([0.0, 0.0, 0.05, 0.10, 0.15, 0.20], n_txn)  # discounts independent of quantity
     gross = qty * price
     discount = (gross * depth).round(2)
     net = gross - discount
@@ -144,9 +140,7 @@ def _write_synthetic_star_schema(data_dir: Path, seed: int = 0) -> None:
             "quantity": -1,
         },  # a return
     ]
-    pd.concat([fact, pd.DataFrame(planted)], ignore_index=True).to_csv(
-        data_dir / "fact_sales.csv", index=False
-    )
+    pd.concat([fact, pd.DataFrame(planted)], ignore_index=True).to_csv(data_dir / "fact_sales.csv", index=False)
 
 
 def _run(tmp_path: Path, make_charts: bool) -> tuple[dict, Path, Path]:
@@ -186,7 +180,5 @@ def test_pipeline_counts_planted_problems_and_satisfies_known_identities(tmp_pat
 
     # Removing every discount with no volume reaction gains exactly the discounts given.
     grid, cost = results["scenario_grid"], results["discount_cost"]
-    gain = grid[(grid["cap"] == 0.0) & (grid["elasticity"] == 0.0)][
-        "profit_change"
-    ].iloc[0]
+    gain = grid[(grid["cap"] == 0.0) & (grid["elasticity"] == 0.0)]["profit_change"].iloc[0]
     assert abs(gain - cost["total_discount_given"]) <= 1

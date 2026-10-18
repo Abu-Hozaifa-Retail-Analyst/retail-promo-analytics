@@ -26,9 +26,7 @@ from src.data.loader import DEFAULT_DATA_DIR, load_all
 from src.features.build_features import build_sales_analysis_table
 from src.visualization import generate_all_charts
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -90,19 +88,13 @@ def run_full_pipeline(
     )
 
     logger.info("Building the analysis table")
-    analysis = build_sales_analysis_table(
-        sales_clean, tables["customer"], tables["store"], tables["date"]
-    )
-    analysis["year_week"] = (
-        analysis["year"].astype(str) + "-" + analysis["week"].astype(str)
-    )
+    analysis = build_sales_analysis_table(sales_clean, tables["customer"], tables["store"], tables["date"])
+    analysis["year_week"] = analysis["year"].astype(str) + "-" + analysis["week"].astype(str)
 
     logger.info("Running promo data diagnostics")
     diagnostics = run_promo_diagnostics(analysis)
 
-    logger.info(
-        "Estimating pooled price elasticity (overall, with seasonality/store effects, by category)"
-    )
+    logger.info("Estimating pooled price elasticity (overall, with seasonality/store effects, by category)")
     pooled = pd.DataFrame(
         [
             {

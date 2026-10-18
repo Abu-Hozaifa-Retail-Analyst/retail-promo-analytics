@@ -18,9 +18,7 @@ def test_panel_sparsity_counts_empty_sku_days():
     df = pd.DataFrame(
         {
             "product_id": ["A", "A", "A", "B"],
-            "transaction_date": pd.to_datetime(
-                ["2024-01-01", "2024-01-02", "2024-01-02", "2024-01-01"]
-            ),
+            "transaction_date": pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-02", "2024-01-01"]),
         }
     )
     result = panel_sparsity(df, n_days=4)
@@ -67,8 +65,7 @@ def _demand_frame(promo_qty: list[int], nonpromo_qty: list[int]) -> pd.DataFrame
             "is_promo": [True] * len(promo_qty) + [False] * len(nonpromo_qty),
             "quantity": promo_qty + nonpromo_qty,
             "discount_pct": [0.1] * len(promo_qty) + [0.0] * len(nonpromo_qty),
-            "promo_depth_bucket": ["5-15%"] * len(promo_qty)
-            + ["No Promo"] * len(nonpromo_qty),
+            "promo_depth_bucket": ["5-15%"] * len(promo_qty) + ["No Promo"] * len(nonpromo_qty),
             "profit_amount": [10.0] * len(promo_qty) + [20.0] * len(nonpromo_qty),
             "gross_margin_pct": [15.0] * len(promo_qty) + [25.0] * len(nonpromo_qty),
         }

@@ -46,9 +46,7 @@ def panel_sparsity(df: pd.DataFrame, n_days: int | None = None) -> dict[str, flo
     }
 
 
-def promo_assignment_profile(
-    df: pd.DataFrame, dims: list[str] | None = None
-) -> pd.DataFrame:
+def promo_assignment_profile(df: pd.DataFrame, dims: list[str] | None = None) -> pd.DataFrame:
     """Does the promo share vary across categories, stores, weekdays, months...?
 
     A real promotional calendar is targeted: some categories, stores and
@@ -100,9 +98,7 @@ def demand_response(df: pd.DataFrame) -> dict:
     promo, non = df[df["is_promo"]], df[~df["is_promo"]]
     base = non["quantity"].mean()
     diff = promo["quantity"].mean() - base
-    se = np.sqrt(
-        promo["quantity"].var() / len(promo) + non["quantity"].var() / len(non)
-    )
+    se = np.sqrt(promo["quantity"].var() / len(promo) + non["quantity"].var() / len(non))
     by_depth = (
         df.groupby("promo_depth_bucket", observed=True)
         .agg(
