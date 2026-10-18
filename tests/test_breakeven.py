@@ -9,9 +9,7 @@ import pandas as pd
 from src.analysis.breakeven import breakeven_table, discount_cost_summary, nominal_depth
 
 
-def _row(
-    promo: bool, gross: float, cost: float, discount: float, qty: int = 1, **extra
-) -> dict:
+def _row(promo: bool, gross: float, cost: float, discount: float, qty: int = 1, **extra) -> dict:
     net = gross - discount
     return {
         "is_promo": promo,
@@ -96,9 +94,7 @@ def test_group_cols_evaluate_each_group_against_its_own_margin():
 
 def test_discount_cost_summary_totals():
     # Two promo sales (profit 20 each, 10 discount each) and one full-price sale (profit 30).
-    df = pd.DataFrame(
-        [_row(True, 100, 70, 10), _row(True, 100, 70, 10), _row(False, 100, 70, 0)]
-    )
+    df = pd.DataFrame([_row(True, 100, 70, 10), _row(True, 100, 70, 10), _row(False, 100, 70, 0)])
     s = discount_cost_summary(df)
     assert s["promo_txns"] == 2
     assert s["promo_share_pct"] == 66.7
@@ -106,7 +102,5 @@ def test_discount_cost_summary_totals():
     assert s["total_profit"] == 70
     assert s["discount_pct_of_profit"] == 28.6  # 20 / 70
     assert s["profit_if_no_discounts_same_volume"] == 90
-    assert (
-        s["max_tolerable_volume_loss_pct"] == 33.3
-    )  # 20 / (40 promo profit + 20 discount)
+    assert s["max_tolerable_volume_loss_pct"] == 33.3  # 20 / (40 promo profit + 20 discount)
     assert s["below_cost_txns"] == 0

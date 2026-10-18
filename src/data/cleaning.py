@@ -84,9 +84,7 @@ def clean_fact_sales(
     bad_product = ~df["product_id"].isin(valid_product_ids)
     bad_store = ~df["store_id"].isin(valid_store_ids)
     missing_date = df["transaction_date"].isna()
-    outside_calendar = (~missing_date) & (
-        (df["transaction_date"] < min_date) | (df["transaction_date"] > max_date)
-    )
+    outside_calendar = (~missing_date) & ((df["transaction_date"] < min_date) | (df["transaction_date"] > max_date))
     # Only quantity == 0 is invalid. Negative quantity is a RETURN,
     # not a data-quality problem — handled separately below.
     bad_quantity = df["quantity"] == 0
@@ -94,9 +92,7 @@ def clean_fact_sales(
     # A discount larger than the gross sale (> 100% off) makes net sales negative
     # on an ordinary sale, which is a data error, not a promotion. Returns
     # (quantity < 0) are excluded so they are never caught by this rule.
-    bad_discount = (df["quantity"] > 0) & (
-        df["discount_amount"] > df["quantity"] * df["unit_price"]
-    )
+    bad_discount = (df["quantity"] > 0) & (df["discount_amount"] > df["quantity"] * df["unit_price"])
 
     qa.invalid_bad_product_fk = int(bad_product.sum())
     qa.invalid_bad_store_fk = int(bad_store.sum())
@@ -106,22 +102,12 @@ def clean_fact_sales(
     qa.invalid_nonpositive_price = int(bad_price.sum())
     qa.invalid_discount_exceeds_gross = int(bad_discount.sum())
     valid_customer_ids = set(customer["customer_id"])
-    bad_customer = ~df["customer_id"].isna() & ~df["customer_id"].isin(
-        valid_customer_ids
-    )
+    bad_customer = ~df["customer_id"].isna() & ~df["customer_id"].isin(valid_customer_ids)
     qa.missing_customer_id = int(df["customer_id"].isna().sum())
     qa.orphan_customer_id = int(bad_customer.sum())
     df["has_valid_customer"] = ~df["customer_id"].isna() & ~bad_customer
 
-    core_invalid = (
-        bad_product
-        | bad_store
-        | missing_date
-        | outside_calendar
-        | bad_quantity
-        | bad_price
-        | bad_discount
-    )
+    core_invalid = bad_product | bad_store | missing_date | outside_calendar | bad_quantity | bad_price | bad_discount
     df["is_valid"] = ~core_invalid
 
     reason_flags = {

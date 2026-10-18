@@ -6,7 +6,6 @@ conftest.py where each row was built to trigger exactly one rule.
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 from src.data.cleaning import clean_fact_sales

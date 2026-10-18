@@ -25,14 +25,10 @@ def build_sales_analysis_table(
         df = df[~df["is_return"]]
     df = df.copy()
 
-    df["discount_pct"] = (
-        df["discount_amount"] / df["gross_sales"].replace(0, pd.NA)
-    ).astype("float64")
+    df["discount_pct"] = (df["discount_amount"] / df["gross_sales"].replace(0, pd.NA)).astype("float64")
     df["discount_pct"] = df["discount_pct"].fillna(0.0).clip(lower=0.0)
     df["is_promo"] = df["discount_amount"] > 0
-    df["promo_depth_bucket"] = pd.cut(
-        df["discount_pct"], bins=_PROMO_DEPTH_BINS, labels=_PROMO_DEPTH_LABELS
-    )
+    df["promo_depth_bucket"] = pd.cut(df["discount_pct"], bins=_PROMO_DEPTH_BINS, labels=_PROMO_DEPTH_LABELS)
 
     df = df.merge(
         store[["store_id", "store_name", "region", "store_type"]],

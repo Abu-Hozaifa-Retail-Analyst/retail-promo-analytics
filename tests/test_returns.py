@@ -8,12 +8,8 @@ from src.analysis.returns import compute_return_rate
 from src.data.cleaning import clean_fact_sales
 
 
-def test_return_rate_computation(
-    raw_fact_sales, dim_customer, dim_product, dim_store, dim_date
-):
-    cleaned, _ = clean_fact_sales(
-        raw_fact_sales, dim_customer, dim_product, dim_store, dim_date
-    )
+def test_return_rate_computation(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date):
+    cleaned, _ = clean_fact_sales(raw_fact_sales, dim_customer, dim_product, dim_store, dim_date)
     result = compute_return_rate(cleaned, ["category"])
     # Electronics (P001): T001 qty=2, T003 qty=3, T011 qty=1 sold = 6 units sold;
     # T007 qty=-1 is the one return = 1 returned unit -> rate = 1/6*100 = 16.67%

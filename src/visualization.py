@@ -97,9 +97,7 @@ def plot_breakeven_gap(breakeven: pd.DataFrame, output_dir: Path) -> Path:
     return _save(fig, output_dir / "breakeven_gap.png")
 
 
-def plot_scenario_curves(
-    scenario_curve: pd.DataFrame, breakeven_elasticities: pd.DataFrame, output_dir: Path
-) -> Path:
+def plot_scenario_curves(scenario_curve: pd.DataFrame, breakeven_elasticities: pd.DataFrame, output_dir: Path) -> Path:
     """Profit change from capping discounts, across demand responses, with break-even points."""
     fig, ax = plt.subplots(figsize=(9.5, 5.8))
     palette = dict(
@@ -150,9 +148,7 @@ def plot_scenario_curves(
         va="center",
     )
     ax.invert_xaxis()
-    ax.set_xlabel(
-        "Assumed price elasticity (0 = no reaction, −10 = extremely price-sensitive)"
-    )
+    ax.set_xlabel("Assumed price elasticity (0 = no reaction, −10 = extremely price-sensitive)")
     ax.set_ylabel("Profit change vs today (million SAR)")
     ax.set_title("Capping discounts pays unless demand is extremely price-sensitive")
     ax.legend(loc="upper right")
@@ -164,14 +160,9 @@ def plot_scenario_curves(
     return _save(fig, output_dir / "scenario_profit_curves.png")
 
 
-def plot_elasticity_estimates(
-    spec_table: pd.DataFrame, category_table: pd.DataFrame, output_dir: Path
-) -> Path:
+def plot_elasticity_estimates(spec_table: pd.DataFrame, category_table: pd.DataFrame, output_dir: Path) -> Path:
     """Forest plot of pooled elasticity estimates with 95% intervals."""
-    rows = [
-        (r["specification"], r["elasticity"], r["ci_low"], r["ci_high"])
-        for _, r in spec_table.iterrows()
-    ]
+    rows = [(r["specification"], r["elasticity"], r["ci_low"], r["ci_high"]) for _, r in spec_table.iterrows()]
     rows += [
         (str(r["category"]), r["elasticity"], r["ci_low"], r["ci_high"])
         for _, r in category_table.sort_values("category").iterrows()
@@ -215,9 +206,7 @@ def plot_elasticity_estimates(
     return _save(fig, output_dir / "elasticity_estimates.png")
 
 
-def plot_return_rate_by_category(
-    return_rate_category: pd.DataFrame, output_dir: Path
-) -> Path:
+def plot_return_rate_by_category(return_rate_category: pd.DataFrame, output_dir: Path) -> Path:
     """Bar chart: return rate % by category."""
     df = return_rate_category.sort_values("return_rate_pct", ascending=False)
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -236,9 +225,7 @@ def generate_all_charts(results: dict, output_dir: Path) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     return [
         plot_breakeven_gap(results["breakeven"], output_dir),
-        plot_scenario_curves(
-            results["scenario_curve"], results["breakeven_elasticity"], output_dir
-        ),
+        plot_scenario_curves(results["scenario_curve"], results["breakeven_elasticity"], output_dir),
         plot_elasticity_estimates(
             results["pooled_elasticity"],
             results["pooled_elasticity_by_category"],

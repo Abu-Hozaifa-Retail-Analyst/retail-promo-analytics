@@ -74,11 +74,7 @@ def breakeven_table(
     # Baseline: quantity per transaction when there is no discount.
     non = df[~df["is_promo"]]
     if group_cols:
-        base = (
-            non.groupby(group_cols)["quantity"]
-            .agg(base_mean="mean", base_var="var", base_n="size")
-            .reset_index()
-        )
+        base = non.groupby(group_cols)["quantity"].agg(base_mean="mean", base_var="var", base_n="size").reset_index()
         band = band.merge(base, on=group_cols, how="left")
     else:
         band["base_mean"] = non["quantity"].mean()
@@ -99,16 +95,10 @@ def breakeven_table(
     out["required_volume_lift_pct"] = np.round(required * 100, 1)
     out["observed_qty_lift_pct"] = (observed * 100).round(2)
     out["observed_ci_low_pct"] = ((diff - 1.96 * se) / band["base_mean"] * 100).round(2)
-    out["observed_ci_high_pct"] = ((diff + 1.96 * se) / band["base_mean"] * 100).round(
-        2
-    )
-    out["extra_txn_growth_needed_pct"] = np.round(
-        ((1 + required) / (1 + observed) - 1) * 100, 1
-    )
+    out["observed_ci_high_pct"] = ((diff + 1.96 * se) / band["base_mean"] * 100).round(2)
+    out["extra_txn_growth_needed_pct"] = np.round(((1 + required) / (1 + observed) - 1) * 100, 1)
     out["below_cost_txns"] = band["below_cost_txns"].astype(int)
-    out["below_cost_share_pct"] = (band["below_cost_txns"] / band["txns"] * 100).round(
-        1
-    )
+    out["below_cost_share_pct"] = (band["below_cost_txns"] / band["txns"] * 100).round(1)
     return out.sort_values(keys).reset_index(drop=True)
 
 

@@ -27,11 +27,11 @@ def run_grouped_parallel(
     results = Parallel(n_jobs=n_jobs)(delayed(fn)(g) for _, g in eligible)
 
     rows = []
-    for (key, _), result in zip(eligible, results):
+    for (key, _), result in zip(eligible, results, strict=True):
         if result is None:
             continue
         key_tuple = key if isinstance(key, tuple) else (key,)
-        row = dict(zip(group_cols, key_tuple))
+        row = dict(zip(group_cols, key_tuple, strict=True))
         row.update(result)
         rows.append(row)
 

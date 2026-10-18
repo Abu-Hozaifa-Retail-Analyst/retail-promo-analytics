@@ -40,11 +40,7 @@ def _confounded(true_elasticity: float, seed: int = 0) -> pd.DataFrame:
             disc = np.where(rng.random(per_cell) < p_disc, 0.20, 0.0)
             noise = rng.normal(0, 0.05, size=per_cell)
             qty = np.exp(sku_base[s] + week_shock[w] + true_elasticity * np.log(1 - disc) + noise)
-            rows.append(
-                pd.DataFrame(
-                    {"product_id": f"P{s}", "week": f"W{w}", "discount_pct": disc, "quantity": qty}
-                )
-            )
+            rows.append(pd.DataFrame({"product_id": f"P{s}", "week": f"W{w}", "discount_pct": disc, "quantity": qty}))
     return pd.concat(rows, ignore_index=True)
 
 
