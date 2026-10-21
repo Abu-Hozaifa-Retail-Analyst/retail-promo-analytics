@@ -17,6 +17,8 @@ this dataset cannot observe.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
@@ -102,7 +104,7 @@ def breakeven_table(
     return out.sort_values(keys).reset_index(drop=True)
 
 
-def discount_cost_summary(df: pd.DataFrame) -> dict:
+def discount_cost_summary(df: pd.DataFrame) -> dict[str, Any]:
     """What discounts cost in total, and how much volume could be lost before removing them pays.
 
     `max_tolerable_volume_loss_pct` answers the practical question: if every

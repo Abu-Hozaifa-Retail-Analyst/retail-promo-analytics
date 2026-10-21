@@ -7,6 +7,8 @@ result must be interpreted.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
@@ -89,7 +91,7 @@ def promo_persistence(df: pd.DataFrame) -> dict[str, float]:
     }
 
 
-def demand_response(df: pd.DataFrame) -> dict:
+def demand_response(df: pd.DataFrame) -> dict[str, Any]:
     """Does quantity per transaction rise when a discount is given?
 
     Returns the quantity lift (promo vs non-promo) with a 95% confidence
@@ -118,7 +120,7 @@ def demand_response(df: pd.DataFrame) -> dict:
     }
 
 
-def run_promo_diagnostics(df: pd.DataFrame) -> dict:
+def run_promo_diagnostics(df: pd.DataFrame) -> dict[str, Any]:
     """Run every diagnostic and return the results in one dict."""
     return {
         "sparsity": panel_sparsity(df),

@@ -27,3 +27,9 @@ skip_empty = true
 exclude_also = [
     'if __name__ == "__main__":',
 ]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+strict = true
+ignore_missing_imports = true
