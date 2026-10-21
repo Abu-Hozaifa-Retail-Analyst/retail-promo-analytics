@@ -130,7 +130,7 @@ retail-promo-analytics/
 │   ├── visualization.py            # break-even, elasticity, scenario and return-rate charts
 │   └── pipeline.py                 # load -> clean -> analyze -> save tables -> draw charts
 ├── notebooks/                      # executed walkthrough notebook (outputs are aggregates only)
-├── tests/                          # 63 pytest tests
+├── tests/                          # 64 pytest tests
 ├── docs/figures/                   # charts shown in this README
 ├── data/raw/                       # your 5 source CSVs go here (gitignored)
 ├── outputs/                        # generated tables and charts (gitignored)
@@ -313,7 +313,7 @@ pytest --cov             # tests with coverage; fails below 95%
 mypy                     # strict type checking of src/ (settings in pyproject.toml)
 ```
 
-63 tests:
+64 tests:
 
 | File | Tests | Covers |
 |---|---|---|
@@ -340,7 +340,7 @@ targeting `main`, in two jobs:
 
 - **lint**: `ruff check`, `ruff format --check` and `mypy` (strict).
 - **test**: the full suite on Python 3.11 and 3.13, with coverage (minimum 95%). A guard step fails the
-  run if fewer than 63 tests are collected, so tests cannot disappear unnoticed. Raise the number when
+  run if fewer than 64 tests are collected, so tests cannot disappear unnoticed. Raise the number when
   you add tests; lowering it should be a deliberate decision.
 
 The suite includes an end-to-end pipeline test on a small synthetic dataset, because the real data is
