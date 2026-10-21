@@ -128,7 +128,8 @@ retail-promo-analytics/
 │   ├── utils/parallel.py           # joblib wrapper for independent per-group work
 │   ├── visualization.py            # break-even, elasticity, scenario and return-rate charts
 │   └── pipeline.py                 # load -> clean -> analyze -> save tables -> draw charts
-├── tests/                          # 47 pytest tests
+├── notebooks/                      # executed walkthrough notebook (outputs are aggregates only)
+├── tests/                          # 50 pytest tests
 ├── docs/figures/                   # charts shown in this README
 ├── data/raw/                       # your 5 source CSVs go here (gitignored)
 ├── outputs/                        # generated tables and charts (gitignored)
@@ -247,6 +248,18 @@ Generated into `outputs/figures/` by `src/visualization.py`; the copies below ar
 
 ![Return rate by category](docs/figures/return_rate_by_category.png)
 
+## Notebook walkthrough
+
+[`notebooks/promo_profitability_walkthrough.ipynb`](notebooks/promo_profitability_walkthrough.ipynb) tells the whole
+story, from raw tables to a recommendation, with the tables and charts shown inline. GitHub displays it with its
+stored outputs, so it can be read without the data.
+
+- Every number in the text is computed live by the functions in `src/`, so it cannot drift from the code.
+- The outputs are aggregates only, never individual transactions. A test fails if a record id appears in an output.
+- To re-run it, install `ipykernel` (`pip install ipykernel`), open the notebook in VS Code, pick the project's
+  virtual environment as the kernel and choose Run All. The five source CSVs must be in `data/raw/`.
+- Notebooks are excluded from ruff, since they present results and are not production code.
+
 ## Methodology review: what the first version got wrong
 
 The first version of this project compared "promo days" with "non-promo days" for each SKU or category. A
@@ -282,7 +295,7 @@ ruff check .             # lint (add --fix to apply safe fixes)
 pytest --cov             # tests with coverage; fails below 95%
 ```
 
-47 tests:
+50 tests:
 
 | File | Tests | Covers |
 |---|---|---|
@@ -295,6 +308,7 @@ pytest --cov             # tests with coverage; fails below 95%
 | `test_breakeven.py` | 6 | Depth snapping, textbook break-even formula, below-cost, extra traffic needed, per-group margins, cost summary |
 | `test_pipeline.py` | 2 | End-to-end run on a synthetic star schema with planted problems: every table and chart is written, QA counts match, and the cap-of-zero identity holds |
 | `test_scenarios.py` | 8 | Exact gain with no response, untouched sales, volume reaction, unit elasticity leaves revenue unchanged, cap of zero, closed-form break-even elasticity, grid shape |
+| `test_notebook.py` | 3 | The notebook's code compiles and stores no errors, it keeps its executed outputs, and its outputs show no individual records |
 
 The pooled elasticity tests use data generated from a **known** elasticity. One test builds busy weeks
 that have both more discounting and more demand: the naive estimate is −3.6 against a true −1.0, and
@@ -307,7 +321,7 @@ targeting `main`, in two jobs:
 
 - **lint**: `ruff check` and `ruff format --check`.
 - **test**: the full suite on Python 3.11 and 3.13, with coverage (minimum 95%). A guard step fails the
-  run if fewer than 47 tests are collected, so tests cannot disappear unnoticed. Raise the number when
+  run if fewer than 50 tests are collected, so tests cannot disappear unnoticed. Raise the number when
   you add tests; lowering it should be a deliberate decision.
 
 The suite includes an end-to-end pipeline test on a small synthetic dataset, because the real data is
@@ -358,7 +372,7 @@ gitignored.
 - [ ] Input schema validation
 - [x] Engineering polish: `pyproject.toml`, ruff, coverage threshold, test-count guard, Python 3.11 and 3.13 matrix
 - [ ] Type checking with mypy
-- [ ] Notebook walkthrough
+- [x] Notebook walkthrough with stored outputs
 - [ ] Repository description and topics, `v1.0` release
 
 ## License
