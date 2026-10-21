@@ -15,6 +15,7 @@ elasticities, plus the break-even elasticity at which a cap stops paying.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -55,7 +56,7 @@ def _simulate(df: pd.DataFrame, cap: float, elasticity: float) -> dict[str, floa
     }
 
 
-def simulate_discount_cap(df: pd.DataFrame, cap: float, elasticity: float) -> dict:
+def simulate_discount_cap(df: pd.DataFrame, cap: float, elasticity: float) -> dict[str, Any]:
     """Profit, sales and unit change if discounts were capped at `cap`.
 
     Args:

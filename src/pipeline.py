@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -50,7 +51,7 @@ def run_full_pipeline(
     figures_dir: Path = DEFAULT_FIGURES_DIR,
     make_charts: bool = True,
     n_jobs: int = -1,
-) -> dict:
+) -> dict[str, Any]:
     """Run the full analysis, write result tables (and charts) to disk, and return everything.
 
     Args:

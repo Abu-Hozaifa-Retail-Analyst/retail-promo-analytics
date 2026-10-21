@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
-import numpy as np
 import pandas as pd
 
 _MISMATCH_TOLERANCE = 0.01
@@ -31,7 +31,7 @@ class QASummary:
     return_rows: int = 0
     financial_field_mismatches: dict[str, int] = field(default_factory=dict)
 
-    def as_dict(self) -> dict:
+    def as_dict(self) -> dict[str, Any]:
         """Convert to a plain dict, e.g. for JSON serialization."""
         return {
             "total_rows_raw": self.total_rows_raw,
@@ -136,16 +136,17 @@ def clean_fact_sales(
     calc_net = calc_gross - df["discount_amount"]
     calc_cost = df["quantity"] * df["unit_cost"]
     calc_profit = calc_net - calc_cost
-    calc_margin = np.where(calc_net != 0, (calc_profit / calc_net) * 100, np.nan)
+    calc_margin = (calc_profit / calc_net.where(calc_net != 0)) * 100
 
-    for name, provided_col, recomputed in [
-        ("gross_sales", "gross_sales", calc_gross),
-        ("net_sales", "net_sales", calc_net),
-        ("cost_amount", "cost_amount", calc_cost),
-        ("profit_amount", "profit_amount", calc_profit),
-        ("gross_margin_pct", "gross_margin_pct", calc_margin),
-    ]:
-        mismatch = (df[provided_col] - recomputed).abs() > _MISMATCH_TOLERANCE
+    recomputed_fields: list[tuple[str, pd.Series]] = [
+        ("gross_sales", calc_gross),
+        ("net_sales", calc_net),
+        ("cost_amount", calc_cost),
+        ("profit_amount", calc_profit),
+        ("gross_margin_pct", calc_margin),
+    ]
+    for name, recomputed in recomputed_fields:
+        mismatch = (df[name] - recomputed).abs() > _MISMATCH_TOLERANCE
         mismatch = mismatch.fillna(False)
         qa.financial_field_mismatches[name] = int(mismatch.sum())
         df[f"_mismatch_{name}"] = mismatch

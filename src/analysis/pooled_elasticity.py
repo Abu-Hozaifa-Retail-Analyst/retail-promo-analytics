@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from functools import partial
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -46,7 +47,7 @@ def estimate_pooled_elasticity(
     df: pd.DataFrame,
     fixed_effects: Sequence[str] = ("product_id",),
     cluster: str = "product_id",
-) -> dict:
+) -> dict[str, Any]:
     """Estimate one price elasticity of demand across all rows of `df`.
 
     Args:

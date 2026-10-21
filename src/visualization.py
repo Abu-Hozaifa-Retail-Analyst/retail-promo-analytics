@@ -8,11 +8,13 @@ when it is pasted into a slide or an email.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
 
 sns.set_theme(style="whitegrid")
@@ -22,11 +24,11 @@ plt.rcParams["savefig.bbox"] = "tight"
 _RED, _BLUE, _GREY = "#C44E52", "#4C72B0", "#7F7F7F"
 
 
-def _footnote(fig: plt.Figure, text: str) -> None:
+def _footnote(fig: Figure, text: str) -> None:
     fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, color=_GREY, wrap=True)
 
 
-def _save(fig: plt.Figure, path: Path) -> Path:
+def _save(fig: Figure, path: Path) -> Path:
     fig.savefig(path)
     plt.close(fig)
     return path
@@ -215,7 +217,7 @@ def plot_return_rate_by_category(return_rate_category: pd.DataFrame, output_dir:
     return _save(fig, output_dir / "return_rate_by_category.png")
 
 
-def generate_all_charts(results: dict, output_dir: Path) -> list[Path]:
+def generate_all_charts(results: dict[str, Any], output_dir: Path) -> list[Path]:
     """Generate the standard chart set from the dict returned by `src.pipeline.run_full_pipeline`."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
