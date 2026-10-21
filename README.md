@@ -304,12 +304,13 @@ pytest -v
 
 ### Development checks
 
-CI runs the same three commands, so run them before pushing:
+CI runs the same four commands, so run them before pushing:
 
 ```powershell
 ruff format .            # format the code
 ruff check .             # lint (add --fix to apply safe fixes)
 pytest --cov             # tests with coverage; fails below 95%
+mypy                     # strict type checking of src/ (settings in pyproject.toml)
 ```
 
 63 tests:
@@ -337,7 +338,7 @@ adding week effects recovers −0.98.
 GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and on every pull request
 targeting `main`, in two jobs:
 
-- **lint**: `ruff check` and `ruff format --check`.
+- **lint**: `ruff check`, `ruff format --check` and `mypy` (strict).
 - **test**: the full suite on Python 3.11 and 3.13, with coverage (minimum 95%). A guard step fails the
   run if fewer than 63 tests are collected, so tests cannot disappear unnoticed. Raise the number when
   you add tests; lowering it should be a deliberate decision.
@@ -389,7 +390,7 @@ gitignored.
 - [ ] SKU × week traffic panel (only informative once a promo calendar is available)
 - [x] Input schema validation
 - [x] Engineering polish: `pyproject.toml`, ruff, coverage threshold, test-count guard, Python 3.11 and 3.13 matrix
-- [ ] Type checking with mypy
+- [x] Type checking with mypy
 - [x] Notebook walkthrough with stored outputs
 - [ ] Repository description and topics, `v1.0` release
 
