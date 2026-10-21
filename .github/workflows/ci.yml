@@ -67,8 +67,8 @@ jobs:
       - name: Guard against silently lost tests
         run: |
           count=$(pytest --collect-only -q | grep -Eo '^[0-9]+ tests? collected' | grep -Eo '^[0-9]+')
-          echo "Collected $count tests (minimum 63)"
-          test "$count" -ge 63
+          echo "Collected $count tests (minimum 64)"
+          test "$count" -ge 64
 
       - name: Run tests with coverage
         run: pytest -v --cov --cov-report=term-missing

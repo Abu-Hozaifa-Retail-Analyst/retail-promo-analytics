@@ -80,3 +80,11 @@ def test_scenario_grid_has_one_row_per_cap_and_elasticity():
     grid = scenario_grid(df, caps=(0.0, 0.10), elasticities=(0.0, -1.0, -2.0))
     assert len(grid) == 6
     assert set(grid["cap"]) == {0.0, 0.10}
+
+
+def test_breakeven_elasticity_is_minus_infinity_when_capping_pays_at_any_reaction():
+    # Sold at 20% off the price is 80 against a cost of 120, a loss of 40 per sale. Capped at 10% the price is
+    # 90, still a loss, but volume only shrinks as customers react. A smaller loss is a gain at every elasticity.
+    df = pd.DataFrame([_row(True, 100, 120, 20)])
+    assert simulate_discount_cap(df, cap=0.10, elasticity=-50.0)["profit_change"] > 0
+    assert breakeven_elasticity(df, cap=0.10) == -math.inf
