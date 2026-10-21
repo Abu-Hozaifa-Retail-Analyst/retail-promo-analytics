@@ -23,6 +23,7 @@ from src.analysis.returns import compute_return_rate
 from src.analysis.scenarios import DEFAULT_CAPS, breakeven_elasticity, scenario_grid
 from src.data.cleaning import clean_fact_sales, qa_summary_to_markdown
 from src.data.loader import DEFAULT_DATA_DIR, load_all
+from src.data.schema import SchemaError
 from src.features.build_features import build_sales_analysis_table
 from src.visualization import generate_all_charts
 
@@ -166,4 +167,7 @@ def run_full_pipeline(
 
 
 if __name__ == "__main__":
-    run_full_pipeline()
+    try:
+        run_full_pipeline()
+    except SchemaError as error:
+        raise SystemExit(f"\n{error}") from None

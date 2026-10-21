@@ -161,7 +161,7 @@ def clean_fact_sales(
     df["gross_margin_pct"] = calc_margin
 
     # --- 4. Replace noisy category column with clean dim_product join --
-    df = df.drop(columns=["category"])
+    df = df.drop(columns=["category"], errors="ignore")
     df = df.merge(product[["product_id", "category"]], on="product_id", how="left")
 
     return df, qa

@@ -116,6 +116,7 @@ retail-promo-analytics/
 ├── src/
 │   ├── data/
 │   │   ├── loader.py               # read raw CSVs from data/raw/
+│   │   ├── schema.py               # check files, columns and value types before any work
 │   │   └── cleaning.py             # dedup, validity flags, canonical recompute, QA summary
 │   ├── features/
 │   │   └── build_features.py       # joins, is_promo, discount_pct, depth buckets
@@ -129,7 +130,7 @@ retail-promo-analytics/
 │   ├── visualization.py            # break-even, elasticity, scenario and return-rate charts
 │   └── pipeline.py                 # load -> clean -> analyze -> save tables -> draw charts
 ├── notebooks/                      # executed walkthrough notebook (outputs are aggregates only)
-├── tests/                          # 50 pytest tests
+├── tests/                          # 63 pytest tests
 ├── docs/figures/                   # charts shown in this README
 ├── data/raw/                       # your 5 source CSVs go here (gitignored)
 ├── outputs/                        # generated tables and charts (gitignored)
@@ -168,6 +169,22 @@ Place these five CSVs in `data/raw/` (star schema, not included in the repo):
 There is no explicit promo flag. A transaction counts as **promoted** if `discount_amount > 0`
 (defined in `src/features/build_features.py`). The diagnostics above show that, in this dataset,
 that is a per-transaction attribute rather than a promotion event.
+
+The pipeline checks these files before it does any work (`src/data/schema.py`). If a file is missing, a
+column is missing or renamed, a numeric column holds text, or a key column has duplicates, it stops with
+**one message listing every problem**, for example:
+
+```
+The input data does not match the expected schema (2 problem(s)):
+  fact_sales.csv
+    - missing column 'unit_price' (found 'UnitPrice': rename it to 'unit_price')
+  dim_product.csv
+    - key column 'product_id' must be unique but 1 value(s) repeat (e.g. 'P0001')
+Fix the source files (see 'Data expectations' in the README) and run again.
+```
+
+Only the structure is checked. Row-level problems (unknown IDs, zero quantities) are not errors: the cleaning
+step flags those rows and keeps them.
 
 ## Data quality handling
 
@@ -295,7 +312,7 @@ ruff check .             # lint (add --fix to apply safe fixes)
 pytest --cov             # tests with coverage; fails below 95%
 ```
 
-50 tests:
+63 tests:
 
 | File | Tests | Covers |
 |---|---|---|
@@ -308,6 +325,7 @@ pytest --cov             # tests with coverage; fails below 95%
 | `test_breakeven.py` | 6 | Depth snapping, textbook break-even formula, below-cost, extra traffic needed, per-group margins, cost summary |
 | `test_pipeline.py` | 2 | End-to-end run on a synthetic star schema with planted problems: every table and chart is written, QA counts match, and the cap-of-zero identity holds |
 | `test_scenarios.py` | 8 | Exact gain with no response, untouched sales, volume reaction, unit elasticity leaves revenue unchanged, cap of zero, closed-form break-even elasticity, grid shape |
+| `test_schema.py` | 13 | Missing and renamed columns with hints, non-numeric values, empty columns, duplicate keys, unreadable dates, one error listing every problem, missing files, valid load |
 | `test_notebook.py` | 3 | The notebook's code compiles and stores no errors, it keeps its executed outputs, and its outputs show no individual records |
 
 The pooled elasticity tests use data generated from a **known** elasticity. One test builds busy weeks
@@ -321,7 +339,7 @@ targeting `main`, in two jobs:
 
 - **lint**: `ruff check` and `ruff format --check`.
 - **test**: the full suite on Python 3.11 and 3.13, with coverage (minimum 95%). A guard step fails the
-  run if fewer than 50 tests are collected, so tests cannot disappear unnoticed. Raise the number when
+  run if fewer than 63 tests are collected, so tests cannot disappear unnoticed. Raise the number when
   you add tests; lowering it should be a deliberate decision.
 
 The suite includes an end-to-end pipeline test on a small synthetic dataset, because the real data is
@@ -369,7 +387,7 @@ gitignored.
 - [x] Wire diagnostics, pooled elasticity, break-even and scenarios into the pipeline and rebuild the charts
 - [x] Remove the superseded first-version code and rewrite `STAKEHOLDER_SUMMARY.md`
 - [ ] SKU × week traffic panel (only informative once a promo calendar is available)
-- [ ] Input schema validation
+- [x] Input schema validation
 - [x] Engineering polish: `pyproject.toml`, ruff, coverage threshold, test-count guard, Python 3.11 and 3.13 matrix
 - [ ] Type checking with mypy
 - [x] Notebook walkthrough with stored outputs
