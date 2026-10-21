@@ -125,12 +125,13 @@ retail-promo-analytics/
 │   │   ├── pooled_elasticity.py    # fixed-effects elasticity, clustered standard errors
 │   │   ├── breakeven.py            # required vs observed volume lift, discount cost summary
 │   │   ├── scenarios.py            # discount-cap simulation, break-even elasticity
+│   │   ├── store_test.py           # store assignment and analysis for the discount-cap test
 │   │   └── returns.py              # return rate and net profit impact
 │   ├── utils/parallel.py           # joblib wrapper for independent per-group work
 │   ├── visualization.py            # break-even, elasticity, scenario and return-rate charts
 │   └── pipeline.py                 # load -> clean -> analyze -> save tables -> draw charts
 ├── notebooks/                      # executed walkthrough notebook (outputs are aggregates only)
-├── tests/                          # 64 pytest tests
+├── tests/                          # 72 pytest tests
 ├── docs/figures/                   # charts shown in this README
 ├── data/raw/                       # your 5 source CSVs go here (gitignored)
 ├── outputs/                        # generated tables and charts (gitignored)
@@ -313,7 +314,7 @@ pytest --cov             # tests with coverage; fails below 95%
 mypy                     # strict type checking of src/ (settings in pyproject.toml)
 ```
 
-64 tests:
+72 tests:
 
 | File | Tests | Covers |
 |---|---|---|
@@ -326,12 +327,17 @@ mypy                     # strict type checking of src/ (settings in pyproject.t
 | `test_breakeven.py` | 6 | Depth snapping, textbook break-even formula, below-cost, extra traffic needed, per-group margins, cost summary |
 | `test_pipeline.py` | 2 | End-to-end run on a synthetic star schema with planted problems: every table and chart is written, QA counts match, and the cap-of-zero identity holds |
 | `test_scenarios.py` | 8 | Exact gain with no response, untouched sales, volume reaction, unit elasticity leaves revenue unchanged, cap of zero, closed-form break-even elasticity, grid shape |
+| `test_store_test.py` | 8 | Matched-pair assignment, reproducibility, odd store counts, safe / harmful / inconclusive verdicts, store-week table |
 | `test_schema.py` | 13 | Missing and renamed columns with hints, non-numeric values, empty columns, duplicate keys, unreadable dates, one error listing every problem, missing files, valid load |
 | `test_notebook.py` | 3 | The notebook's code compiles and stores no errors, it keeps its executed outputs, and its outputs show no individual records |
 
 The pooled elasticity tests use data generated from a **known** elasticity. One test builds busy weeks
 that have both more discounting and more demand: the naive estimate is −3.6 against a true −1.0, and
 adding week effects recovers −0.98.
+
+## Next step: the store test
+
+The one question this data cannot answer is whether discounts bring in extra customers. [`docs/store_test_design.md`](docs/store_test_design.md) sets out a 16-week test of a 10% cap in 10 of the 20 stores, with decision rules, and `src/analysis/store_test.py` assigns the stores and analyses the result.
 
 ## Continuous integration
 
@@ -340,7 +346,7 @@ targeting `main`, in two jobs:
 
 - **lint**: `ruff check`, `ruff format --check` and `mypy` (strict).
 - **test**: the full suite on Python 3.11 and 3.13, with coverage (minimum 95%). A guard step fails the
-  run if fewer than 64 tests are collected, so tests cannot disappear unnoticed. Raise the number when
+  run if fewer than 72 tests are collected, so tests cannot disappear unnoticed. Raise the number when
   you add tests; lowering it should be a deliberate decision.
 
 The suite includes an end-to-end pipeline test on a small synthetic dataset, because the real data is
